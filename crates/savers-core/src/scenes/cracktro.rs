@@ -388,6 +388,81 @@ impl Cracktro {
 				}
 			}
 		}
+		self.cube_ring(t, f);
+	}
+
+	/// A ring of six flat-shaded cubes orbiting between the twisters on a tilted circle: back faces culled, faces drawn far to
+	/// near, each lit by how squarely it faces a light from the upper left, in the palette's hues.
+	fn cube_ring(&self, t: f32, f: &mut Frame) {
+		let (sw, sh) = (self.sw as f32, self.sh as f32);
+		let corners: [[f32; 3]; 8] = [
+			[-1.0, -1.0, -1.0],
+			[1.0, -1.0, -1.0],
+			[1.0, 1.0, -1.0],
+			[-1.0, 1.0, -1.0],
+			[-1.0, -1.0, 1.0],
+			[1.0, -1.0, 1.0],
+			[1.0, 1.0, 1.0],
+			[-1.0, 1.0, 1.0],
+		];
+		const FACES: [[usize; 4]; 6] = [
+			[0, 3, 2, 1],
+			[4, 5, 6, 7],
+			[0, 1, 5, 4],
+			[2, 3, 7, 6],
+			[1, 2, 6, 5],
+			[0, 4, 7, 3],
+		];
+		let light = [-0.5f32, -0.6, -0.62];
+		let mut quads: Vec<Quad> = Vec::new();
+		for k in 0..6 {
+			let a = t * 0.7 + k as f32 * TAU / 6.0;
+			// The ring: a circle tilted towards the viewer, centred on the screen.
+			let (rx, rz) = (cos(a) * 2.6, sin(a) * 2.6);
+			let (ry, rz) = (rz * 0.35, rz * 0.94 + 7.0);
+			let spin = t * 1.3 + k as f32;
+			let (cs, ss) = (cos(spin), sin(spin));
+			let (ct, st) = (cos(spin * 0.7), sin(spin * 0.7));
+			let hue = self.pal.hue(k % self.pal.glow_n.max(1));
+			let world: Vec<[f32; 3]> = corners
+				.iter()
+				.map(|c| {
+					let (x, y, z) = (c[0] * 0.42, c[1] * 0.42, c[2] * 0.42);
+					let (x, z) = (x * cs + z * ss, -x * ss + z * cs);
+					let (y, z) = (y * ct - z * st, y * st + z * ct);
+					[x + rx, y + ry, z + rz]
+				})
+				.collect();
+			for face in FACES {
+				let p = |i: usize| world[face[i]];
+				let (a3, b3, c3) = (p(0), p(1), p(2));
+				let u = [b3[0] - a3[0], b3[1] - a3[1], b3[2] - a3[2]];
+				let v = [c3[0] - a3[0], c3[1] - a3[1], c3[2] - a3[2]];
+				let n = [
+					u[1] * v[2] - u[2] * v[1],
+					u[2] * v[0] - u[0] * v[2],
+					u[0] * v[1] - u[1] * v[0],
+				];
+				// Back faces point away from the eye at the origin.
+				if n[0] * a3[0] + n[1] * a3[1] + n[2] * a3[2] >= 0.0 {
+					continue;
+				}
+				let len = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).max(1e-6);
+				let lit = ((n[0] * light[0] + n[1] * light[1] + n[2] * light[2]) / len).max(0.0);
+				let shade = (70.0 + 186.0 * lit) as u32;
+				let depth = (0..4).map(|i| p(i)[2]).sum::<f32>();
+				let pts = [0, 1, 2, 3].map(|i| {
+					let q = p(i);
+					(sw * 0.5 + q[0] / q[2] * sh * 0.9, sh * 0.42 + q[1] / q[2] * sh * 0.9)
+				});
+				quads.push((depth, pts, scale(hue, shade)));
+			}
+		}
+		quads.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(core::cmp::Ordering::Equal));
+		for (_, pts, c) in quads {
+			fill_triangle(f, pts[0], pts[1], pts[2], c);
+			fill_triangle(f, pts[0], pts[2], pts[3], c);
+		}
 	}
 
 	/// The scroller: the text strip read column by column, each column lifted by a sine, filled with a copper gradient, with a
@@ -560,6 +635,42 @@ impl Scene for Cracktro {
 			streak_tint: mixf(self.pal.sun, 0xFFFFFF, 0.3),
 			fade: 1.0,
 			bloom_gain: if part == Part::Plasma { 0.5 } else { 0.9 },
+		}
+	}
+}
+
+/// A face to draw: its depth (larger is further), its corners on screen, its colour.
+type Quad = (f32, [(f32, f32); 4], u32);
+
+/// Fills a triangle with one colour, scanline by scanline, pixel centres inside its edges.
+fn fill_triangle(f: &mut Frame, a: (f32, f32), b: (f32, f32), c: (f32, f32), colour: u32) {
+	let mut v = [a, b, c];
+	v.sort_by(|p, q| p.1.partial_cmp(&q.1).unwrap_or(core::cmp::Ordering::Equal));
+	let [(x0, y0), (x1, y1), (x2, y2)] = v;
+	let edge = |ya: f32, yb: f32, xa: f32, xb: f32, y: f32| {
+		if (yb - ya).abs() < 1e-6 {
+			xa
+		} else {
+			xa + (xb - xa) * (y - ya) / (yb - ya)
+		}
+	};
+	let top = (y0 + 0.5).max(0.0) as i32;
+	let bottom = (crate::math::floor_i(y2 - 0.5) + 1).min(f.h as i32 - 1);
+	for y in top..=bottom {
+		let yc = y as f32 + 0.5;
+		if yc < y0 || yc > y2 {
+			continue;
+		}
+		let long = edge(y0, y2, x0, x2, yc);
+		let short = if yc < y1 {
+			edge(y0, y1, x0, x1, yc)
+		} else {
+			edge(y1, y2, x1, x2, yc)
+		};
+		let (l, r) = if long < short { (long, short) } else { (short, long) };
+		let (xa, xb) = (((l + 0.5) as i32).max(0), ((r - 0.5) as i32).min(f.w as i32 - 1));
+		for x in xa..=xb {
+			f.px[y as usize * f.w + x as usize] = colour;
 		}
 	}
 }

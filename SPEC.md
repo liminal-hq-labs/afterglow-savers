@@ -75,7 +75,7 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 | `Detail` | 0 Low, 1 Medium, 2 High, 3 Ultra | 0–3 | 1 |
 | `Speed` | Percent of normal speed | 25–200 | 100 |
 | `Palette` | 0 Dusk, 1 Indigo, 2 Ember, 3 Aurora, 4 Graphite (Ghostwriter adds 5 Quill, its default) | 0–4 | 0 |
-| `Light` | 1 for the palette's light (day) mode, where the scene has one (Ink, Maze, Ghostwriter) | 0–1 | 0 |
+| `Light` | 1 for the palette's light (day) mode, where the scene has one (Ink and Ghostwriter; the Maze has no day look yet and ignores it) | 0–1 | 0 |
 | `MaxFps` | Frame cap | 10–60 | 30 |
 | `Bloom`, `Streaks`, `Vignette`, `Grain`, `Letterbox`, `Fades` | §6 | | |
 | `Seed` | The scene's seed; 0 for a new one each run | any | 0 |

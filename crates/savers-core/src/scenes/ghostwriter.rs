@@ -409,19 +409,23 @@ fn skin(era: Era, pal: &Palette) -> Skin {
 			status_text: 0x000000,
 			accent: 0x000080,
 		},
-		Era::Modern => Skin {
-			frame: pal.n(700),
-			title: pal.n(900),
-			title_text: pal.n(100),
-			menu: pal.n(300),
-			menu_text: pal.n(900),
-			page: pal.n(100),
-			ink: mixf(pal.n(900), 0x000000, 0.3),
-			surround: pal.n(500),
-			status: pal.n(300),
-			status_text: pal.n(900),
-			accent: gold,
-		},
+		Era::Modern => {
+			// The window keeps its look by day: a light palette's neutral ramp runs the other way, so its steps are mirrored.
+			let n = |step: u32| if pal.light { pal.n(1000 - step) } else { pal.n(step) };
+			Skin {
+				frame: n(700),
+				title: n(900),
+				title_text: n(100),
+				menu: n(300),
+				menu_text: n(900),
+				page: n(100),
+				ink: mixf(n(900), 0x000000, 0.3),
+				surround: n(500),
+				status: n(300),
+				status_text: n(900),
+				accent: gold,
+			}
+		}
 	}
 }
 
