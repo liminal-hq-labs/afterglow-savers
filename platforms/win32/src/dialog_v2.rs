@@ -512,10 +512,13 @@ fn apply_changes(dialog: Handle, state: &State) {
 
 /// One timer tick: takes up edits, then draws the next preview frame unless the dialog is inactive.
 fn tick(dialog: Handle, state: &State) {
-	if state.dirty.replace(false) {
+	// A tick that took up edits may have rebuilt the preview's scene; the banner waits for the next one, so the two costs never land
+	// in one tick and the preview shows the change first.
+	let edited = state.dirty.replace(false);
+	if edited {
 		apply_changes(dialog, state);
 	}
-	if state.banner_stale.replace(false) {
+	if !edited && state.banner_stale.replace(false) {
 		render_banner(dialog, state);
 		// The banner took this tick; the clock restarts so the preview does not jump.
 		state.last.set(state.clock.seconds());
