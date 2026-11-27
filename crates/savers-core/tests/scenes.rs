@@ -119,3 +119,50 @@ fn every_render_size_works() {
 		let _ = render_size(&Settings::defaults(kind), 1, 1, true);
 	}
 }
+
+/// The Maze in its looping mode is a true loop: the frame after one walk is the frame at the start, and the portal's crossing is no
+/// bigger a step than any other frame of the walk.
+#[test]
+fn the_maze_loops_through_its_portal() {
+	let make = || {
+		let mut s = Settings::defaults(SaverKind::Maze);
+		s.set(Key::Detail, 2);
+		s.set(Key::RenderScale, 100);
+		s.set(Key::Grain, 0);
+		s.set(Key::LoopMaze, 1);
+		let (rw, rh) = render_size(&s, 160, 90, false);
+		let scene = build(SaverKind::Maze, &s, 7, rw, rh);
+		Saver::new(s, scene, 160, 90, false)
+	};
+	let mut sv = make();
+	let length = sv.loop_length().expect("a looping maze reports its length");
+	let step = 1.0 / 30.0;
+	let mut t = 0.0;
+	let at = |sv: &mut Saver, when: f64, t: &mut f64| {
+		while *t + step < when {
+			sv.at(*t);
+			*t += step;
+		}
+		*t = when;
+		sv.at(when).px.clone()
+	};
+	let first = at(&mut sv, 5.0, &mut t);
+	let ordinary = (at(&mut sv, 20.0, &mut t), at(&mut sv, 20.0 + 2.0 * step, &mut t));
+	let before = at(&mut sv, length - step, &mut t);
+	let after = at(&mut sv, length + step, &mut t);
+	let again = at(&mut sv, length + 5.0, &mut t);
+	let diff = |a: &[u32], b: &[u32]| {
+		a.iter()
+			.zip(b)
+			.map(|(&x, &y)| (luma(x) as i64 - luma(y) as i64).unsigned_abs())
+			.sum::<u64>() as f64
+			/ a.len() as f64
+	};
+	assert_eq!(first, again, "one walk later the frame is the same");
+	let seam = diff(&before, &after);
+	let walk = diff(&ordinary.0, &ordinary.1);
+	assert!(
+		seam <= walk * 2.0 + 1.0,
+		"the crossing changes {seam:.2} levels a pixel, an ordinary step {walk:.2}"
+	);
+}

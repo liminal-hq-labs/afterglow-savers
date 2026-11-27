@@ -149,6 +149,11 @@ impl Saver {
 		self.fin.output(&self.render, ow, oh, &p, self.frame_no)
 	}
 
+	/// The scene's loop length in seconds, when it repeats exactly.
+	pub fn loop_length(&self) -> Option<f64> {
+		self.scene.loop_length()
+	}
+
 	/// Scene time in seconds.
 	pub fn time(&self) -> f64 {
 		self.time

@@ -107,9 +107,10 @@ pub enum Key {
 	Savers,
 	Acts,
 	Sun,
+	LoopMaze,
 }
 
-pub const KEY_COUNT: usize = Key::Sun as usize + 1;
+pub const KEY_COUNT: usize = Key::LoopMaze as usize + 1;
 
 /// How the dialog shows a field.
 #[derive(Clone, Copy, Debug)]
@@ -209,6 +210,7 @@ const COMMON: &[Field] = &[
 const MAZE: &[Field] = &[
 	f(Key::Floor, "Floor", "Floor", 0, 2, 0, Control::Choice(FLOORS)),
 	f(Key::MazeSize, "MazeSize", "Maze size", 8, 32, 14, Control::Slider),
+	f(Key::LoopMaze, "LoopMaze", "Loop the same maze", 0, 1, 0, Control::Check),
 ];
 const TWILIGHT: &[Field] = &[
 	f(Key::Atmosphere, "Atmosphere", "Atmosphere", 0, 100, 70, Control::Slider),

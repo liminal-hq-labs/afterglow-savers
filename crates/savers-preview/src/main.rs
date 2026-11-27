@@ -34,6 +34,7 @@ options:
   --fps N             simulation steps per second (default 30)
   --out DIR           where frames go (default previews/<scene>)
   --frames N          frames timed per rung in bench (default 60)
+  --loop              frames: render exactly one loop of a scene that repeats (Maze with LoopMaze=1), from --from
   --pipe              frames: write raw RGB24 frames to standard output instead of PNG files (for ffmpeg -f rawvideo)
 ";
 
@@ -71,6 +72,7 @@ struct Opts {
 	out: Option<PathBuf>,
 	frames: usize,
 	pipe: bool,
+	one_loop: bool,
 }
 
 fn parse() -> Result<Opts, String> {
@@ -92,6 +94,7 @@ fn parse() -> Result<Opts, String> {
 		out: None,
 		frames: 60,
 		pipe: false,
+		one_loop: false,
 	};
 	while let Some(a) = args.next() {
 		let mut val = || args.next().ok_or(format!("{a} needs a value"));
@@ -124,6 +127,7 @@ fn parse() -> Result<Opts, String> {
 			"--out" => o.out = Some(PathBuf::from(val()?)),
 			"--frames" => o.frames = val()?.parse().map_err(|_| "bad --frames")?,
 			"--pipe" => o.pipe = true,
+			"--loop" => o.one_loop = true,
 			"--help" | "-h" => return Err(String::new()),
 			_ => return Err(format!("unknown option {a}")),
 		}
@@ -158,9 +162,18 @@ fn frames(o: &Opts) -> Result<(), String> {
 	let dt = 1.0 / o.fps;
 	let mut t = 0.0f64;
 	let mut next = o.from;
+	let mut to = o.to;
+	if o.one_loop {
+		let length = saver
+			.loop_length()
+			.ok_or("--loop: this scene and these settings do not repeat")?;
+		// Frames from `from` up to, not including, `from` plus one loop, so the file plays round without a doubled frame.
+		to = o.from + length - o.step * 0.5;
+		eprintln!("frames: one loop of {length:.2} s");
+	}
 	let mut n = 0;
 	let started = Instant::now();
-	while t <= o.to + 1e-9 {
+	while t <= to + 1e-9 {
 		let frame = saver.at(t);
 		if t + 1e-9 >= next {
 			if o.pipe {

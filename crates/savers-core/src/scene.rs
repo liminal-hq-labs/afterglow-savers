@@ -47,6 +47,11 @@ pub trait Scene {
 	/// Draws the frame for `cx.t` into `out`, whose size is the render size the scene was made for.
 	fn render(&mut self, cx: &Ctx, out: &mut Frame);
 
+	/// The length in seconds after which the scene repeats exactly, when it does: frame(t) equals frame(t + length).
+	fn loop_length(&self) -> Option<f64> {
+		None
+	}
+
 	/// How to finish the frame just drawn.
 	fn hints(&self, _cx: &Ctx) -> Hints {
 		Hints::default()

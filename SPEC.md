@@ -83,6 +83,7 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 | --- | --- | --- | --- | --- |
 | Maze | `Floor` | 0 polished stone, 1 water, 2 tiles | 0–2 | 0 |
 | Maze | `MazeSize` | Cells along each side | 8–32 | 14 |
+| Maze | `LoopMaze` | Through the portal, walk the same maze again (a true loop, as the preview videos use) instead of a new one | 0–1 | 0 |
 | Twilight | `Atmosphere` | Strength of the atmosphere's glow | 0–100 | 70 |
 | Twilight | `Moons` | Number of moons | 0–2 | 2 |
 | Twilight | `Sun` | Show the sun: far off in the establishing shot, and sliding out from behind the limb in the night-side drift | 0–1 | 1 |
