@@ -9,7 +9,7 @@ all-features = true
 [licenses]
 confidence-threshold = 0.9
 allow = ["Apache-2.0", "MIT"]
-# The graphics-card edition (`savers-gpu`, SAV-D29) reaches a few crates under other permissive licences. Each is named, so nothing
+# The graphics-card edition (`savers-gpu`, SAV-D32) reaches a few crates under other permissive licences. Each is named, so nothing
 # else gets them: ISC for libloading (opens the Vulkan loader), Zlib for foldhash and slotmap, and Unicode-3.0 for unicode-ident's data.
 exceptions = [
 	{ allow = ["ISC"], crate = "libloading" },

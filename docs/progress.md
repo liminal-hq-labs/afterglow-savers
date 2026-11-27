@@ -10,7 +10,7 @@ The resumable log of where the work stands. Newest state first; each phase lists
 - **P3** the Win32 `.scr` shells (`platforms/win32`): `/s`, `/p`, `/c`, registry, dialog, resources, six programs for i586 (x87, no MMX or SSE) and x86-64, checks, byte-identical builds and the Wine run. Done. Sizes (`-Os`, i586): AGMAZE 79 KiB, AGCRACK 79 KiB, AGTWILIT 81 KiB, AGINK 67 KiB, AGCOLLCT 167 KiB (without Ghostwriter), together 473 KiB of 640; AGQUILL 86 KiB. Next: `scripts/guest/guest.py --scr platforms/win32/dist/<arch>` in the ReactOS image.
 - **P4** the ReactOS integration plan: done (`docs/reactos-integration.md`); the Quill installer plan too (`docs/quill-installer-integration.md`).
 - **P5** Quill Ghostwriter: the scene and `AGQUILL.SCR` are done; the Windows 3.x edition `QUILLGW.SCR` (SAV-D23) is WP-win16, queued for a builder.
-- **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): three work packages, queued for builders.
+- **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): WP-gpu-share and WP-gpu-render are done (`crates/savers-gpu`, SAV-D32 and SAV-D33: a headless renderer held to the CPU frames, `savers-gpu-preview` for frames, comparisons and timings); WP-gpu-linux (the fullscreen binary and the xscreensaver hack) is next.
 - **P7** the Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after WP-win32: three work packages.
 
 Builder queue (the orchestrator's order): WP-art, WP-gpu-share, WP-win16, then the dialog v2 packages.
