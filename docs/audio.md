@@ -59,4 +59,4 @@ The same for `maze.mp4` (with `--set LoopMaze=1 --loop --from 2`, as the video w
 2. **WP-audio-preview** (area `repo`): `savers-preview audio` with `--loop`; `scripts/preview-audio.sh` that renders and remuxes onto the existing videos as `*-audio.mp4` (AAC 256 kbps, `-c:v copy`), keeping the silent files.
 3. **WP-audio-scores-2** (area `core`): Ink, Cracktro's chiptune, Ghostwriter's ticks, the Collection's cross-fade.
 4. **WP-audio-win32** (area `win32`, after 1): waveOut output in the frame loop, `Sound` and `Volume` in the settings table (the dialog v2 builder adds them to the Look group), silence in `/p`, the Wine check, the ReactOS guest capture with AC97.
-5. **WP-audio-linux** (area `gpu`, with or after WP-gpu-linux): `cpal` output for the GPU edition.
+5. **WP-audio-linux** (area `gpu`, with or after WP-gpu-linux): `cpal` output for the GPU edition. Done with WP-gpu-linux (SAV-D45).

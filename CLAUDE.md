@@ -21,6 +21,7 @@ Afterglow Screensavers is a Liminal HQ Labs experiment: Afterglow Maze, Cracktro
 ```sh
 make check                       # the gate: fmt, clippy, tests, headers, Win32 builds and checks, sizes, repro
 make check-fast                  # fmt, clippy, tests, headers
+make check-gpu                   # the Linux edition on its own Xvfb with lavapipe (needs Xvfb, import, xdotool)
 cargo run -p savers-preview --release -- --help
 bash scripts/smoke-wine.sh
 ```

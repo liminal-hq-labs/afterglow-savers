@@ -150,3 +150,12 @@ A second, much smaller program for Windows 3.0, 3.1 and 3.11 (SAV-D23, SAV-D37):
 - **Settings.** `CONTROL.INI`, section `[Screen Saver.Quill Ghostwriter]`: `Acts` (a mask numbered as the Windows 95 edition's: `1` is typing with mistakes, `32` the visit from the "Save the changes?" box; default `33`) and `Speed` (`0` slow, `1` normal, `2` fast). `Log=1` makes each start write its command line to `C:\QGWn.LOG` (a diagnostic). Setup is a dialog resource with two check boxes and three radio buttons.
 - **The scene.** Reduced for 16-bit integer GDI: a Quill window (navy title bar, menu, B I U buttons, ruler with tab stops, cream page, status bar counting `Pg`, `Ln` and `Col`) drifting on a Lissajous path over a dark desk, drawn into a memory bitmap and copied with `BitBlt`, only when its content changes; typing from a bank of sixteen lines with seven typos, the red squiggle, the suggestion box, the correction, and the "Save the changes to Untitled before Quill closes?" box with a blinking focus rectangle. Where the screen has fewer than 256 colours it uses the sixteen pure colours of the VGA (black desk, navy, dark yellow for the gold, white page); elsewhere Quill's own.
 - **Not done in this edition:** the reflow, time machine, font eras and lore acts, the stroke font, the palettes and the Collection. Its ladder has one rung.
+
+## 11. The Linux edition (Twilight on the graphics card)
+
+`afterglow-twilight-gpu` (`platforms/linux`, `docs/linux-edition.md`) draws Twilight on the graphics card with the same scene, palettes, camera and finish as section 7's Twilight, and the same settings by the same names, kept in `~/.config/liminal-hq/afterglow-savers/twilight.toml` instead of the registry. Differences:
+
+- **Defaults:** `RenderScale` 100, `Detail` Ultra and a frame cap of 60 (`FrameCap`: 0 for vsync, or 10 to 240, which replaces `MaxFps`); everything else as on Windows, including `Sound` on at `Volume` 28.
+- **Full screen** is borderless on the primary monitor at its native size, cursor hidden, ending as section 4 says (a key, a button, or more than 10 pixels of pointer movement), with `--window WxH` for a window and `--preview` for a small silent one.
+- **As an xscreensaver hack** (`-window-id`, `-root`) it draws into xscreensaver's X11 window, ignores input, and is **silent unless `--sound`** is given.
+- **Sound** is the same score at 48 kHz through the default ALSA device; with no device it is silent.

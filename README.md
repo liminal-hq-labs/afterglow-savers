@@ -27,6 +27,19 @@ Every saver plays a quiet generated soundtrack while it runs (untick "Play sound
 
 Copy the `.scr` files into `C:\ReactOS\system32` (or `C:\Windows\System32`), then pick one under **Display Properties > Screen Saver**, where **Settings** opens its options.
 
+## Linux
+
+Afterglow Twilight also runs on the graphics card on Linux (X11 and Wayland), at 4K, as a fullscreen saver, an xscreensaver hack or in a window, with sound through ALSA (PipeWire and PulseAudio answer to it):
+
+```sh
+bash platforms/linux/install.sh                    # builds and installs under ~/.local, no sudo
+afterglow-twilight-gpu                             # fullscreen; any key, click or 10 px of movement ends it
+afterglow-twilight-gpu --window 1280x720 --palette Aurora --scale 75
+afterglow-twilight-gpu --shot twilight.png --size 3840x2160 --at 40
+```
+
+Settings live in `~/.config/liminal-hq/afterglow-savers/twilight.toml` (`--write-config` makes it). [docs/linux-edition.md](docs/linux-edition.md) has the modes, the xscreensaver line, GNOME, KDE and swayidle, the tests and the numbers.
+
 ## Build and look
 
 With Rust 1.98.0 (`rust-toolchain.toml` pins it):
@@ -44,6 +57,7 @@ cargo run -p savers-preview --release -- bench --scene ink --size 800x600
 - [docs/art.md](docs/art.md): the look and the palettes
 - [docs/reactos-scr.md](docs/reactos-scr.md): how ReactOS runs a screensaver
 - [docs/decisions.md](docs/decisions.md): why things are the way they are
+- [docs/linux-edition.md](docs/linux-edition.md): the Linux edition on the graphics card
 - [docs/testing.md](docs/testing.md): the gate, the preview tool and the guests
 
 ## Licence

@@ -91,6 +91,7 @@ Use `#` comments for shell, Python, TOML and Makefiles, and an XML comment for S
 
 - `make check` — the gate; `make check-fast` — fmt, clippy, tests, headers
 - `cargo run -p savers-preview --release -- --help` — render any scene to PNG frames, a contact sheet, a GIF or an MP4, and time the quality ladder
+- `make check-gpu` — the Linux edition on its own Xvfb with lavapipe (needs Xvfb, `import`, `xdotool`); never against the desktop session, and `WAYLAND_DISPLAY` is cleared
 - `bash scripts/smoke-wine.sh` — the `.scr` files under Wine on their own Xvfb
 - `docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.17.2 "**/*.md"` — markdown
 
@@ -106,8 +107,8 @@ State exactly what was and was not run when reporting results. [`docs/testing.md
 
 ```text
 README.md SPEC.md AGENTS.md CLAUDE.md LICENSE-APACHE LICENSE-MIT Makefile Cargo.toml
-crates/        savers-core (the renderer, scenes and settings) and savers-preview (host-only previews, never shipped)
-platforms/     win32: the .scr shells for i586 and x86_64, their own workspace
+crates/        savers-core (the renderer, scenes and settings), savers-gpu (the wgpu Twilight) and savers-preview (host-only previews, never shipped)
+platforms/     win32: the .scr shells for i586 and x86_64, their own workspace; linux: the fullscreen GPU saver, xscreensaver hack and installer (docs/linux-edition.md)
 art/           SVG masters for the icons and the scripts that render them
 assets/        hero banner
 docs/          decisions, scenes, art, testing, ReactOS notes, landing, progress

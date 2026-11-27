@@ -12,6 +12,8 @@
 
 `make check-fast` is the first four. The Wine smoke (`scripts/smoke-wine.sh`) and the ReactOS guest run (`scripts/guest/`) are separate, because they take minutes and need Xvfb, Wine or QEMU.
 
+`make check-gpu` is separate too: the Linux edition (`platforms/linux`) on its own Xvfb with the lavapipe software Vulkan driver, five tests for the window, fullscreen, the exit rules, the xscreensaver hack and the sound (captured through ALSA's file plug-in). It needs Xvfb, ImageMagick's `import`, `xdotool` and `vulkan-swrast`, and says SKIP when one is missing. See `docs/linux-edition.md`.
+
 ## Golden frames
 
 Each scene has golden frame checksums: a small frame (160 × 90) at fixed times, seeds and detail levels, hashed with FNV-1a. A change that alters a scene's look changes its hash; update them with `SAVERS_UPDATE_GOLDEN=1 cargo nextest run` after looking at the new frames with the preview tool, and say so in the commit. The goldens are for the host build only (SAV-D6).

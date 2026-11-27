@@ -58,7 +58,7 @@ All of Twilight's settings (SPEC section 7), including `Sun` (the sun disc and g
 | `RenderScale` | 25, 50, 75 or 100% of the output, as on the CPU; 4K at 100% is the target | 100 |
 | `MaxFps` | frame cap: 30, 60, 120, or 0 for the display's refresh (vsync) | 60 |
 
-Settings come from `~/.config/afterglow-savers/twilight.toml` (the same value names as the registry), overridden by command-line flags (`--set Name=value`, `--seed`, `--palette`).
+Settings come from `~/.config/liminal-hq/afterglow-savers/twilight.toml` (the same value names as the registry; SAV-D43), overridden by command-line flags (`--set Name=value`, `--seed`, `--palette`).
 
 ## Linux shells
 
@@ -81,4 +81,4 @@ The numbers are the doc's: a mean absolute error per channel of at most 6 levels
 
 1. **WP-gpu-share** (area `core`, small): move the shared parts of Twilight into a public module, with the goldens unchanged; add the `map_size` parameter.
 2. **WP-gpu-render** (area `gpu`): `savers-gpu` with the planet, background, moons and satellites, and the finish; an offscreen render-to-texture path; the parity test with lavapipe.
-3. **WP-gpu-linux** (area `gpu`, after 2): the fullscreen binary, the xscreensaver hack mode and its XML, settings from TOML, the bench; a screenshot mode for previews (`--shot path.png --at 40`).
+3. **WP-gpu-linux** (area `gpu`, after 2; done, `docs/linux-edition.md`): the fullscreen binary, the xscreensaver hack mode and its XML, settings from TOML, the bench; a screenshot mode for previews (`--shot path.png --at 40`).
