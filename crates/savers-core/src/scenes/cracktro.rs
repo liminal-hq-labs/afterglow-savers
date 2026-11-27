@@ -602,14 +602,17 @@ impl Scene for Cracktro {
 		}
 		self.scroller(t, &mut stage);
 		// Enlarge with hard pixel edges.
-		for y in 0..self.h {
-			let sy = y * self.sh / self.h;
-			let src = &stage.px[sy * self.sw..(sy + 1) * self.sw];
-			let row = &mut out.px[y * self.w..(y + 1) * self.w];
-			for (px, &sx) in row.iter_mut().zip(&self.xmap) {
-				*px = src[sx as usize];
+		let (sw, sh, h) = (self.sw, self.sh, self.h);
+		let (stage_px, xmap) = (&stage.px, &self.xmap);
+		crate::bands::rows(cx.bands, &mut out.px, self.w, &|band| {
+			for y in band.y0..band.y1 {
+				let sy = y * sh / h;
+				let src = &stage_px[sy * sw..(sy + 1) * sw];
+				for (px, &sx) in band.row(y).iter_mut().zip(xmap) {
+					*px = src[sx as usize];
+				}
 			}
-		}
+		});
 		self.stage = stage;
 	}
 

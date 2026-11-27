@@ -5,6 +5,7 @@
 
 use alloc::boxed::Box;
 
+use crate::bands::{Bands, SERIAL};
 use crate::frame::Frame;
 use crate::math::saturate;
 use crate::palette::{Palette, PaletteId};
@@ -55,6 +56,7 @@ pub struct Saver {
 	time: f64,
 	wall: f64,
 	frame_no: u32,
+	bands: &'static dyn Bands,
 }
 
 impl Saver {
@@ -73,7 +75,13 @@ impl Saver {
 			time: 0.0,
 			wall: 0.0,
 			frame_no: 0,
+			bands: &SERIAL,
 		}
+	}
+
+	/// Shares the heavy passes between the threads of `bands`. The frames are the same byte for byte with any bands.
+	pub fn set_bands(&mut self, bands: &'static dyn Bands) {
+		self.bands = bands;
 	}
 
 	pub fn detail(&self) -> Detail {
@@ -109,6 +117,7 @@ impl Saver {
 			detail,
 			pal: &self.pal,
 			frame_no: self.frame_no,
+			bands: self.bands,
 		};
 		self.scene.render(&cx, &mut self.render);
 		let hints = self.scene.hints(&cx);
@@ -143,10 +152,10 @@ impl Saver {
 			streak_tint: hints.streak_tint,
 			coarse: detail == Detail::Low,
 		};
-		self.fin.glow(&mut self.render, &p);
+		self.fin.glow(&mut self.render, &p, self.bands);
 		let (ow, oh) = output_size(detail, self.win, (self.render.w, self.render.h));
 		self.frame_no = self.frame_no.wrapping_add(1);
-		self.fin.output(&self.render, ow, oh, &p, self.frame_no)
+		self.fin.output(&self.render, ow, oh, &p, self.frame_no, self.bands)
 	}
 
 	/// The scene's loop length in seconds, when it repeats exactly.

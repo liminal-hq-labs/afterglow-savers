@@ -11,6 +11,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::bands::{Bands, Shared};
 use crate::colour::{b, g, mix, r, screen};
 use crate::frame::Frame;
 use crate::rng::hash32;
@@ -59,9 +60,7 @@ pub struct Finisher {
 	green: Vec<i32>,
 	blue: Vec<i32>,
 	streak: Vec<i32>,
-	tmp: Vec<i32>,
 	glow: Vec<u32>,
-	row: Vec<u32>,
 	grain: Vec<i16>,
 	vx: Vec<u32>,
 	vy: Vec<u32>,
@@ -90,9 +89,7 @@ impl Finisher {
 			green: Vec::new(),
 			blue: Vec::new(),
 			streak: Vec::new(),
-			tmp: Vec::new(),
 			glow: Vec::new(),
-			row: Vec::new(),
 			grain,
 			vx: Vec::new(),
 			vy: Vec::new(),
@@ -100,8 +97,9 @@ impl Finisher {
 		}
 	}
 
-	/// Lays the glow over `frame` in place.
-	pub fn glow(&mut self, frame: &mut Frame, p: &FinishParams) {
+	/// Lays the glow over `frame` in place. Every pass is shared between the threads of `bands` (SAV-D51); the result does not
+	/// depend on how.
+	pub fn glow(&mut self, frame: &mut Frame, p: &FinishParams, bands: &dyn Bands) {
 		if p.bloom == 0 && p.streaks == 0 {
 			return;
 		}
@@ -117,89 +115,137 @@ impl Finisher {
 			}
 			self.glow.clear();
 			self.glow.resize(qw * qh, 0);
-			self.tmp.clear();
-			self.tmp.resize(qw.max(qh) + 2, 0);
 		}
+		let (fw, fh) = (frame.w, frame.h);
+		let red = Shared::new(&mut self.red);
+		let green = Shared::new(&mut self.green);
+		let blue = Shared::new(&mut self.blue);
+		let streak = Shared::new(&mut self.streak);
+		let glow = Shared::new(&mut self.glow);
 		// The bright pass, at the coarse size: two samples per block, the part of the luma above the threshold, kept in colour.
 		let thr = p.threshold.min(250) as i32;
 		let span = 255 - thr;
 		let half = step / 2;
-		for qy in 0..qh {
-			let y0 = (qy * step + half / 2).min(frame.h - 1);
-			let y1 = (qy * step + half + half / 2).min(frame.h - 1);
-			for qx in 0..qw {
-				let x0 = (qx * step + half / 2).min(frame.w - 1);
-				let x1 = (qx * step + half + half / 2).min(frame.w - 1);
-				let c0 = frame.px[y0 * frame.w + x0];
-				let c1 = frame.px[y1 * frame.w + x1];
-				let (rr, gg, bb) = ((r(c0) + r(c1)) as i32, (g(c0) + g(c1)) as i32, (b(c0) + b(c1)) as i32);
-				let l = (rr * 77 + gg * 150 + bb * 29) >> 9;
-				let i = qy * qw + qx;
-				let k = (l - thr).max(0);
-				// Each channel times how far over the threshold the luma is, 0 to 510 per channel.
-				self.red[i] = rr * k / span;
-				self.green[i] = gg * k / span;
-				self.blue[i] = bb * k / span;
-				self.streak[i] = (k * k / span) * 2;
+		let src = &frame.px;
+		bands.run(qh, &|range| {
+			// SAFETY: the bands' row ranges are disjoint, and each plane is written only here in this pass.
+			let (red, green, blue, streak) = unsafe {
+				let cells = range.start * qw..range.end * qw;
+				(
+					red.slice(cells.clone()),
+					green.slice(cells.clone()),
+					blue.slice(cells.clone()),
+					streak.slice(cells),
+				)
+			};
+			for qy in range.clone() {
+				let y0 = (qy * step + half / 2).min(fh - 1);
+				let y1 = (qy * step + half + half / 2).min(fh - 1);
+				for qx in 0..qw {
+					let x0 = (qx * step + half / 2).min(fw - 1);
+					let x1 = (qx * step + half + half / 2).min(fw - 1);
+					let c0 = src[y0 * fw + x0];
+					let c1 = src[y1 * fw + x1];
+					let (rr, gg, bb) = ((r(c0) + r(c1)) as i32, (g(c0) + g(c1)) as i32, (b(c0) + b(c1)) as i32);
+					let l = (rr * 77 + gg * 150 + bb * 29) >> 9;
+					let i = (qy - range.start) * qw + qx;
+					let k = (l - thr).max(0);
+					// Each channel times how far over the threshold the luma is, 0 to 510 per channel.
+					red[i] = rr * k / span;
+					green[i] = gg * k / span;
+					blue[i] = bb * k / span;
+					streak[i] = (k * k / span) * 2;
+				}
 			}
-		}
-		// Bloom: two box blurs each way, radius about 2% of the height.
+		});
+		// Bloom: two box blurs each way, radius about 2% of the height. Streaks: three long horizontal blurs, about a quarter of
+		// the width each, then a thin vertical one. The planes are independent, so each pass does all of them, rows then columns.
 		let radius = (qh / 24).max(1);
-		for plane in [&mut self.red, &mut self.green, &mut self.blue] {
-			for _ in 0..2 {
-				blur_rows(plane, qw, qh, radius, &mut self.tmp);
-				blur_cols(plane, qw, qh, radius, &mut self.tmp);
-			}
-		}
-		// Streaks: three long horizontal blurs, about a quarter of the width each.
-		if p.streaks > 0 {
-			let long = (qw / 7).max(2);
-			for _ in 0..3 {
-				blur_rows(&mut self.streak, qw, qh, long, &mut self.tmp);
-			}
-			blur_cols(&mut self.streak, qw, qh, 1, &mut self.tmp);
-		}
-		// Pack the glow: bloom in its own colours, streaks in the tint.
+		let long = (qw / 7).max(2);
+		let streaks = p.streaks > 0;
+		let blur_all_rows = |first: bool| {
+			bands.run(qh, &|range| {
+				let mut tmp = vec![0i32; qw];
+				let cells = range.start * qw..range.end * qw;
+				// SAFETY: disjoint row ranges again; each plane is touched by this pass alone.
+				unsafe {
+					for plane in [&red, &green, &blue] {
+						blur_rows(plane.slice(cells.clone()), qw, radius, &mut tmp);
+					}
+					if first && streaks {
+						for _ in 0..3 {
+							blur_rows(streak.slice(cells.clone()), qw, long, &mut tmp);
+						}
+					}
+				}
+			});
+		};
+		// The packing of the glow rides on the last column pass: bloom in its own colours, streaks in the tint.
 		let bk = (p.bloom.min(100) * 3) as i32;
 		let sk = (p.streaks.min(100) * 5) as i32;
 		let (tr, tg, tb) = (r(p.streak_tint) as i32, g(p.streak_tint) as i32, b(p.streak_tint) as i32);
-		for i in 0..qw * qh {
-			let s = self.streak[i] * sk / 100;
-			let rr = (self.red[i] * bk / 200 + s * tr / 255).clamp(0, 255) as u32;
-			let gg = (self.green[i] * bk / 200 + s * tg / 255).clamp(0, 255) as u32;
-			let bb = (self.blue[i] * bk / 200 + s * tb / 255).clamp(0, 255) as u32;
-			self.glow[i] = (rr << 16) | (gg << 8) | bb;
-		}
-		// Lay it over the frame: bilinear through a row cache, screen blend.
-		self.row.clear();
-		self.row.resize(qw, 0);
-		let fy_step = ((qh as i64) << 16) / frame.h as i64;
-		let fx_step = ((qw as i64) << 16) / frame.w as i64;
-		for y in 0..frame.h {
-			let sy = (y as i64 * fy_step - 32_768).max(0) as i32;
-			let y0 = ((sy >> 16) as usize).min(qh - 1);
-			let y1 = (y0 + 1).min(qh - 1);
-			let ty = ((sy >> 8) & 0xFF) as u32;
-			for x in 0..qw {
-				self.row[x] = mix(self.glow[y0 * qw + x], self.glow[y1 * qw + x], ty);
-			}
-			let line = &mut frame.px[y * frame.w..(y + 1) * frame.w];
-			let mut sx = -32_768i32;
-			for px in line.iter_mut() {
-				let xs = sx.max(0);
-				let x0 = ((xs >> 16) as usize).min(qw - 1);
-				let x1 = (x0 + 1).min(qw - 1);
-				let gl = mix(self.row[x0], self.row[x1], ((xs >> 8) & 0xFF) as u32);
-				if gl != 0 {
-					*px = screen(*px, gl);
+		let blur_all_cols = |first: bool, last: bool| {
+			bands.run(qw, &|range| {
+				let mut tmp = vec![0i32; qh];
+				// SAFETY: disjoint column ranges; every cell of a column is read and written by its own band only.
+				unsafe {
+					for plane in [&red, &green, &blue] {
+						blur_cols(plane, qw, qh, radius, range.clone(), &mut tmp);
+					}
+					if first && streaks {
+						blur_cols(&streak, qw, qh, 1, range.clone(), &mut tmp);
+					}
+					if last {
+						for y in 0..qh {
+							for x in range.clone() {
+								let i = y * qw + x;
+								let s = streak.get(i) * sk / 100;
+								let rr = (red.get(i) * bk / 200 + s * tr / 255).clamp(0, 255) as u32;
+								let gg = (green.get(i) * bk / 200 + s * tg / 255).clamp(0, 255) as u32;
+								let bb = (blue.get(i) * bk / 200 + s * tb / 255).clamp(0, 255) as u32;
+								glow.set(i, (rr << 16) | (gg << 8) | bb);
+							}
+						}
+					}
 				}
-				sx += fx_step as i32;
+			});
+		};
+		blur_all_rows(true);
+		blur_all_cols(true, false);
+		blur_all_rows(false);
+		blur_all_cols(false, true);
+		// Lay it over the frame: bilinear through a row cache, screen blend.
+		let fy_step = ((qh as i64) << 16) / fh as i64;
+		let fx_step = ((qw as i64) << 16) / fw as i64;
+		let glow = &self.glow;
+		crate::bands::rows(bands, &mut frame.px, fw, &|band| {
+			let mut row = vec![0u32; qw];
+			for y in band.y0..band.y1 {
+				let sy = (y as i64 * fy_step - 32_768).max(0) as i32;
+				let y0 = ((sy >> 16) as usize).min(qh - 1);
+				let y1 = (y0 + 1).min(qh - 1);
+				let ty = ((sy >> 8) & 0xFF) as u32;
+				for x in 0..qw {
+					row[x] = mix(glow[y0 * qw + x], glow[y1 * qw + x], ty);
+				}
+				let line = band.row(y);
+				let mut sx = -32_768i32;
+				for px in line.iter_mut() {
+					let xs = sx.max(0);
+					let x0 = ((xs >> 16) as usize).min(qw - 1);
+					let x1 = (x0 + 1).min(qw - 1);
+					let gl = mix(row[x0], row[x1], ((xs >> 8) & 0xFF) as u32);
+					if gl != 0 {
+						*px = screen(*px, gl);
+					}
+					sx += fx_step as i32;
+				}
 			}
-		}
+		});
 	}
 
 	/// Enlarges `src` into `self.out` at `ow` × `oh` with the vignette, fade, letterbox and grain. `frame_no` moves the grain.
-	pub fn output(&mut self, src: &Frame, ow: usize, oh: usize, p: &FinishParams, frame_no: u32) -> &Frame {
+	pub fn output(&mut self, src: &Frame, ow: usize, oh: usize, p: &FinishParams, frame_no: u32, bands: &dyn Bands) -> &Frame {
 		if self.out.w != ow || self.out.h != oh || self.vx.len() != ow || self.vy.len() != oh {
 			self.out.resize(ow, oh);
 			self.vx.clear();
@@ -236,44 +282,48 @@ impl Finisher {
 		let sx_step = (((src.w as i64) << 16) / ow as i64) as i32;
 		let sy_step = (((src.h as i64) << 16) / oh as i64) as i32;
 		let mask = self.grain.len() - 1;
-		for y in 0..oh {
-			let line = &mut self.out.px[y * ow..(y + 1) * ow];
-			if y < top || y >= bottom {
-				line.fill(0);
-				continue;
-			}
-			let vy = self.vy[y] * fade >> 8;
-			let mut gi = hash32(frame_no.wrapping_mul(0x9E37_79B9) ^ (y as u32).wrapping_mul(0x85EB_CA6B)) as usize;
-			if same {
-				let srow = &src.px[y * ow..(y + 1) * ow];
-				for ((px, &c), &vx) in line.iter_mut().zip(srow).zip(&self.vx) {
-					let k = vx * vy >> 8;
-					let gr = self.grain[gi & mask] as i32 * amp >> 8;
-					gi += 1;
-					*px = finish_px(c, k, gr);
+		let Finisher { out, vx, vy, grain, .. } = self;
+		let (vx, vy, grain) = (&vx[..], &vy[..], &grain[..]);
+		crate::bands::rows(bands, &mut out.px, ow, &|band| {
+			for y in band.y0..band.y1 {
+				let line = band.row(y);
+				if y < top || y >= bottom {
+					line.fill(0);
+					continue;
 				}
-			} else {
-				let sy = (y as i32 * sy_step + sy_step / 2 - 32_768).max(0);
-				let y0 = ((sy >> 16) as usize).min(src.h - 1);
-				let y1 = (y0 + 1).min(src.h - 1);
-				let ty = ((sy >> 8) & 0xFF) as u32;
-				let r0 = &src.px[y0 * src.w..(y0 + 1) * src.w];
-				let r1 = &src.px[y1 * src.w..(y1 + 1) * src.w];
-				let mut sx = sx_step / 2 - 32_768;
-				for (px, &vx) in line.iter_mut().zip(&self.vx) {
-					let xs = sx.max(0);
-					let x0 = ((xs >> 16) as usize).min(src.w - 1);
-					let x1 = (x0 + 1).min(src.w - 1);
-					let tx = ((xs >> 8) & 0xFF) as u32;
-					let c = mix(mix(r0[x0], r0[x1], tx), mix(r1[x0], r1[x1], tx), ty);
-					let k = vx * vy >> 8;
-					let gr = self.grain[gi & mask] as i32 * amp >> 8;
-					gi += 1;
-					*px = finish_px(c, k, gr);
-					sx += sx_step;
+				let vy = vy[y] * fade >> 8;
+				let mut gi = hash32(frame_no.wrapping_mul(0x9E37_79B9) ^ (y as u32).wrapping_mul(0x85EB_CA6B)) as usize;
+				if same {
+					let srow = &src.px[y * ow..(y + 1) * ow];
+					for ((px, &c), &vx) in line.iter_mut().zip(srow).zip(vx) {
+						let k = vx * vy >> 8;
+						let gr = grain[gi & mask] as i32 * amp >> 8;
+						gi += 1;
+						*px = finish_px(c, k, gr);
+					}
+				} else {
+					let sy = (y as i32 * sy_step + sy_step / 2 - 32_768).max(0);
+					let y0 = ((sy >> 16) as usize).min(src.h - 1);
+					let y1 = (y0 + 1).min(src.h - 1);
+					let ty = ((sy >> 8) & 0xFF) as u32;
+					let r0 = &src.px[y0 * src.w..(y0 + 1) * src.w];
+					let r1 = &src.px[y1 * src.w..(y1 + 1) * src.w];
+					let mut sx = sx_step / 2 - 32_768;
+					for (px, &vx) in line.iter_mut().zip(vx) {
+						let xs = sx.max(0);
+						let x0 = ((xs >> 16) as usize).min(src.w - 1);
+						let x1 = (x0 + 1).min(src.w - 1);
+						let tx = ((xs >> 8) & 0xFF) as u32;
+						let c = mix(mix(r0[x0], r0[x1], tx), mix(r1[x0], r1[x1], tx), ty);
+						let k = vx * vy >> 8;
+						let gr = grain[gi & mask] as i32 * amp >> 8;
+						gi += 1;
+						*px = finish_px(c, k, gr);
+						sx += sx_step;
+					}
 				}
 			}
-		}
+		});
 		&self.out
 	}
 }
@@ -339,11 +389,10 @@ fn add_saturating(c: u32, d: i32) -> u32 {
 	}
 }
 
-/// Box blur along each row, radius `rad`, through a running sum, with the edges clamped.
-fn blur_rows(plane: &mut [i32], w: usize, h: usize, rad: usize, tmp: &mut [i32]) {
+/// Box blur along each row of `rows` (whole rows of width `w`), radius `rad`, through a running sum, with the edges clamped.
+fn blur_rows(rows: &mut [i32], w: usize, rad: usize, tmp: &mut [i32]) {
 	let n = (2 * rad + 1) as i32;
-	for y in 0..h {
-		let row = &mut plane[y * w..(y + 1) * w];
+	for row in rows.chunks_exact_mut(w) {
 		tmp[..w].copy_from_slice(row);
 		let at = |i: isize, tmp: &[i32]| tmp[i.clamp(0, w as isize - 1) as usize];
 		let mut sum: i32 = 0;
@@ -357,12 +406,16 @@ fn blur_rows(plane: &mut [i32], w: usize, h: usize, rad: usize, tmp: &mut [i32])
 	}
 }
 
-/// Box blur down each column.
-fn blur_cols(plane: &mut [i32], w: usize, h: usize, rad: usize, tmp: &mut [i32]) {
+/// Box blur down the columns `xs` of a `w` × `h` plane.
+///
+/// # Safety
+/// No other thread touches the columns `xs` of `plane` during the call.
+unsafe fn blur_cols(plane: &Shared<i32>, w: usize, h: usize, rad: usize, xs: core::ops::Range<usize>, tmp: &mut [i32]) {
 	let n = (2 * rad + 1) as i32;
-	for x in 0..w {
-		for y in 0..h {
-			tmp[y] = plane[y * w + x];
+	for x in xs {
+		for (y, cell) in tmp.iter_mut().enumerate().take(h) {
+			// SAFETY: column `x` is ours alone.
+			*cell = unsafe { plane.get(y * w + x) };
 		}
 		let at = |i: isize, tmp: &[i32]| tmp[i.clamp(0, h as isize - 1) as usize];
 		let mut sum: i32 = 0;
@@ -370,7 +423,8 @@ fn blur_cols(plane: &mut [i32], w: usize, h: usize, rad: usize, tmp: &mut [i32])
 			sum += at(i, tmp);
 		}
 		for y in 0..h {
-			plane[y * w + x] = sum / n;
+			// SAFETY: as above.
+			unsafe { plane.set(y * w + x, sum / n) };
 			sum += at(y as isize + rad as isize + 1, tmp) - at(y as isize - rad as isize, tmp);
 		}
 	}
@@ -394,11 +448,11 @@ mod tests {
 			vignette: 0,
 			..FinishParams::default()
 		};
-		fin.glow(&mut f, &p);
+		fin.glow(&mut f, &p, &crate::bands::SERIAL);
 		assert!(r(f.get(70, 45)) > 10, "bloom next to the dot");
 		assert!(r(f.get(40, 45)) > 0, "streak along the row");
 		assert_eq!(f.get(80, 5) & 0xFF, 0, "nothing far above");
-		let out = fin.output(&f, 320, 180, &p, 0);
+		let out = fin.output(&f, 320, 180, &p, 0, &crate::bands::SERIAL);
 		assert_eq!(out.w, 320);
 		assert_eq!(out.get(160, 90), 0xFFFFFF);
 	}
@@ -433,8 +487,8 @@ mod tests {
 			vignette: 0,
 			..FinishParams::default()
 		};
-		let a = fin.output(&f, 64, 64, &p, 1).px.clone();
-		let c = fin.output(&f, 64, 64, &p, 2).px.clone();
+		let a = fin.output(&f, 64, 64, &p, 1, &crate::bands::SERIAL).px.clone();
+		let c = fin.output(&f, 64, 64, &p, 2, &crate::bands::SERIAL).px.clone();
 		assert!(a[0..64].iter().all(|&v| v == 0), "bars");
 		let moved = a[32 * 64..33 * 64]
 			.iter()

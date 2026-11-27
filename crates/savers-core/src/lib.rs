@@ -13,6 +13,7 @@
 extern crate alloc;
 
 pub mod audio;
+pub mod bands;
 pub mod bench;
 pub mod colour;
 pub mod font;

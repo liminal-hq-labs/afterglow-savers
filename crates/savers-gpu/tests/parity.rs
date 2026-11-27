@@ -174,8 +174,8 @@ fn the_finish_matches_the_cpu_chain() {
 	for (i, params) in cases.iter().enumerate() {
 		let mut cpu_in = frame.clone();
 		let mut finisher = Finisher::new();
-		finisher.glow(&mut cpu_in, params);
-		let cpu_out = finisher.output(&cpu_in, w, h, params, 1).clone();
+		finisher.glow(&mut cpu_in, params, &savers_core::bands::SERIAL);
+		let cpu_out = finisher.output(&cpu_in, w, h, params, 1, &savers_core::bands::SERIAL).clone();
 		let finish = Finish::new(&gpu, (w, h), (w, h), params.coarse);
 		write_frame(&gpu, finish.input(), &frame);
 		let mut encoder = gpu

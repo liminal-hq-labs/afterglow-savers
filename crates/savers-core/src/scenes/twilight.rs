@@ -14,6 +14,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::bands::Rows;
 use crate::colour::{self, mix, mixf, scale, screen};
 use crate::frame::Frame;
 use crate::math::{PI, TAU, V3, atan2, clamp, cos, fract, powf, round_i, saturate, sin, sqrt};
@@ -51,6 +52,9 @@ impl Twilight {
 	}
 }
 
+/// A moon or a satellite to draw: its place, depth, radius, index and whether it is a satellite.
+type Body = (f32, f32, f32, f32, u32, bool);
+
 impl Scene for Twilight {
 	fn render(&mut self, cx: &Ctx, out: &mut Frame) {
 		let t = cx.t as f32;
@@ -66,15 +70,17 @@ impl Scene for Twilight {
 		let sy_step = ((nb.h as f32 * 0.8 / h) * 65_536.0) as i32;
 		let ox = (((0.1 + pan_x * 0.5) * nb.w as f32) * 65_536.0) as i32;
 		let oy = (((0.1 + pan_y * 0.5) * nb.h as f32) * 65_536.0) as i32;
-		for y in 0..self.h {
-			let sy = oy + y as i32 * sy_step;
-			let row = &mut out.px[y * self.w..(y + 1) * self.w];
-			let mut sx = ox;
-			for px in row.iter_mut() {
-				*px = nb.sample(sx, sy);
-				sx += sx_step;
+		let sw = self.w;
+		crate::bands::rows(cx.bands, &mut out.px, sw, &|band| {
+			for y in band.y0..band.y1 {
+				let sy = oy + y as i32 * sy_step;
+				let mut sx = ox;
+				for px in band.row(y).iter_mut() {
+					*px = nb.sample(sx, sy);
+					sx += sx_step;
+				}
 			}
-		}
+		});
 		for s in &self.shared.stars {
 			let x = fract(s.x + pan_x * 0.7) * w;
 			let y = fract(s.y + pan_y * 0.7) * h;
@@ -102,7 +108,7 @@ impl Scene for Twilight {
 		let spin = t * self.shared.spin_rate;
 		let cloud_spin = t * self.shared.spin_rate * 1.35;
 		// Moons and satellites, placed first, so those behind the planet are drawn before it.
-		let mut bodies: Vec<(f32, f32, f32, f32, u32, bool)> = Vec::new();
+		let mut bodies: Vec<Body> = Vec::new();
 		for (i, m) in self.shared.moons.iter().enumerate() {
 			let a = m.phase + t * m.speed;
 			let p = V3::new(
@@ -121,18 +127,36 @@ impl Scene for Twilight {
 			bodies.push((pcx + p.x * r, pcy + p.y * r, p.z, 0.0, i as u32, true));
 		}
 		// The sun, behind everything but the stars, so the planet hides it as it passes: a small white-hot disc in a soft glow.
-		if self.shared.sun && cam.sun_distance > 0.0 {
+		// Three passes over bands of rows with the satellites (a few pixels each, across band edges) drawn between them in order.
+		let sun_at = if self.shared.sun && cam.sun_distance > 0.0 {
 			let d = sqrt(light.x * light.x + light.y * light.y).max(1e-3);
-			let sx = pcx + light.x / d * r * cam.sun_distance;
-			let sy = pcy + light.y / d * r * cam.sun_distance;
-			self.draw_sun(out, sx, sy);
+			Some((
+				pcx + light.x / d * r * cam.sun_distance,
+				pcy + light.y / d * r * cam.sun_distance,
+			))
+		} else {
+			None
+		};
+		let (behind, front): (Vec<&Body>, Vec<&Body>) = bodies.iter().partition(|b| b.2 < 0.0);
+		crate::bands::rows(cx.bands, &mut out.px, sw, &|band| {
+			if let Some((sx, sy)) = sun_at {
+				self.draw_sun(band, sx, sy);
+			}
+			for b in behind.iter().filter(|b| !b.5) {
+				self.draw_body(band, b, light, detail);
+			}
+		});
+		for b in behind.iter().filter(|b| b.5) {
+			self.draw_satellite(out, b, t, detail);
 		}
-		for b in bodies.iter().filter(|b| b.2 < 0.0) {
-			self.draw_body(out, b, light, t, detail);
-		}
-		self.draw_planet(out, pcx, pcy, r, tilt, roll, light, spin, cloud_spin, detail);
-		for b in bodies.iter().filter(|b| b.2 >= 0.0) {
-			self.draw_body(out, b, light, t, detail);
+		crate::bands::rows(cx.bands, &mut out.px, sw, &|band| {
+			self.draw_planet(band, pcx, pcy, r, tilt, roll, light, spin, cloud_spin, detail);
+			for b in front.iter().filter(|b| !b.5) {
+				self.draw_body(band, b, light, detail);
+			}
+		});
+		for b in front.iter().filter(|b| b.5) {
+			self.draw_satellite(out, b, t, detail);
 		}
 		let _ = self.seed;
 	}
@@ -180,21 +204,19 @@ fn rotate_view(p: V3, tilt: f32, roll: f32) -> V3 {
 impl Twilight {
 	/// The sun: a core of white through the sun hue, about a fiftieth of the height across, in a glow that falls off over a
 	/// sixth of the height. The finishing chain's bloom and streaks do the rest.
-	fn draw_sun(&self, out: &mut Frame, sx: f32, sy: f32) {
+	fn draw_sun(&self, out: &mut Rows, sx: f32, sy: f32) {
 		let h = self.h as f32;
 		let core = (h * 0.014).max(1.5);
 		let reach = h * 0.17;
 		let glow = mixf(self.shared.palette.sun, self.shared.palette.hue(0), 0.35);
 		let hot = mixf(self.shared.palette.sun, 0xFFFFFF, 0.75);
-		let y0 = ((sy - reach) as i32).max(0);
-		let y1 = ((sy + reach) as i32 + 1).min(self.h as i32);
+		let ys = out.clip(((sy - reach) as i32).max(0), ((sy + reach) as i32 + 1).min(self.h as i32));
 		let x0 = ((sx - reach) as i32).max(0);
 		let x1 = ((sx + reach) as i32 + 1).min(self.w as i32);
-		for y in y0..y1 {
+		for y in ys {
 			for x in x0..x1 {
 				let (dx, dy) = (x as f32 + 0.5 - sx, y as f32 + 0.5 - sy);
 				let d = sqrt(dx * dx + dy * dy);
-				let i = y as usize * self.w + x as usize;
 				let c = if d < core {
 					hot
 				} else if d < core + 1.0 {
@@ -206,7 +228,8 @@ impl Twilight {
 					}
 					scale(glow, (k * k * k * 190.0 + (core / d) * 110.0).min(255.0) as u32)
 				};
-				out.px[i] = screen(out.px[i], c);
+				let at = out.row(y as usize);
+				at[x as usize] = screen(at[x as usize], c);
 			}
 		}
 	}
@@ -214,7 +237,7 @@ impl Twilight {
 	#[allow(clippy::too_many_arguments)]
 	fn draw_planet(
 		&self,
-		out: &mut Frame,
+		out: &mut Rows,
 		pcx: f32,
 		pcy: f32,
 		r: f32,
@@ -228,8 +251,7 @@ impl Twilight {
 		let (w, h) = (self.w as i32, self.h as i32);
 		let halo = 1.0 + 0.22 * self.shared.atmosphere;
 		let reach = r * halo;
-		let y0 = ((pcy - reach) as i32).max(0);
-		let y1 = ((pcy + reach) as i32 + 1).min(h);
+		let ys = out.clip(((pcy - reach) as i32).max(0), ((pcy + reach) as i32 + 1).min(h));
 		let x0 = ((pcx - reach) as i32).max(0);
 		let x1 = ((pcx + reach) as i32 + 1).min(w);
 		let inv_r = 1.0 / r;
@@ -248,9 +270,9 @@ impl Twilight {
 		let city = mixf(self.shared.palette.sun, 0xFFFFFF, 0.2);
 		let cloud_lit = mixf(self.shared.palette.n(200), self.shared.palette.sun, 0.1);
 		let scale_u = mw as f32 / TAU;
-		for py in y0..y1 {
+		for py in ys {
 			let ny = (py as f32 + 0.5 - pcy) * inv_r;
-			let row = &mut out.px[py as usize * self.w..(py as usize + 1) * self.w];
+			let row = out.row(py as usize);
 			for px in x0..x1 {
 				let nx = (px as f32 + 0.5 - pcx) * inv_r;
 				let d2 = nx * nx + ny * ny;
@@ -341,9 +363,9 @@ impl Twilight {
 		}
 	}
 
-	fn draw_body(&self, out: &mut Frame, b: &(f32, f32, f32, f32, u32, bool), light: V3, t: f32, detail: Detail) {
-		let &(bx, by, _z, br, idx, sat) = b;
-		if sat {
+	fn draw_satellite(&self, out: &mut Frame, b: &Body, t: f32, detail: Detail) {
+		let &(bx, by, _z, _br, idx, _sat) = b;
+		{
 			// A satellite: a glint and a blinking light.
 			let blink = fract(t * 0.8 + idx as f32 * 0.37) < 0.12;
 			let c = if blink {
@@ -361,18 +383,22 @@ impl Twilight {
 					}
 				}
 			}
-			return;
 		}
+	}
+
+	/// A moon, in the band's rows.
+	fn draw_body(&self, out: &mut Rows, b: &Body, light: V3, detail: Detail) {
+		let &(bx, by, _z, br, idx, _sat) = b;
+		let _ = detail;
 		let m = &self.shared.moons[idx as usize];
-		let y0 = ((by - br) as i32).max(0);
-		let y1 = ((by + br) as i32 + 1).min(self.h as i32);
+		let ys = out.clip(((by - br) as i32).max(0), ((by + br) as i32 + 1).min(self.h as i32));
 		let x0 = ((bx - br) as i32).max(0);
 		let x1 = ((bx + br) as i32 + 1).min(self.w as i32);
 		if br < 0.5 {
 			return;
 		}
 		let inv = 1.0 / br;
-		for py in y0..y1 {
+		for py in ys {
 			let ny = (py as f32 + 0.5 - by) * inv;
 			for px in x0..x1 {
 				let nx = (px as f32 + 0.5 - bx) * inv;
@@ -388,8 +414,8 @@ impl Twilight {
 				let c = colour::shade(m.tint, crater);
 				let c = scale(c, (lit * 235.0 + 8.0) as u32);
 				let edge = (1.0 - sqrt(d2)) * br;
-				let i = py as usize * self.w + px as usize;
-				out.px[i] = if edge < 1.0 { mixf(out.px[i], c, edge) } else { c };
+				let at = &mut out.row(py as usize)[px as usize];
+				*at = if edge < 1.0 { mixf(*at, c, edge) } else { c };
 			}
 		}
 	}

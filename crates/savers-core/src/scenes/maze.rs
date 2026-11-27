@@ -20,6 +20,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::bands::{Bands, Shared};
 use crate::colour::{self, Ramp, mix, mixf, scale, screen};
 use crate::frame::Frame;
 use crate::math::{PI, TAU, atan2, clamp, cos, ease, floor_i, fract, lerp, round_i, saturate, sin, smoothstep, sqrt};
@@ -791,7 +792,15 @@ impl Scene for MazeScene {
 			};
 			let mut vcols = core::mem::take(&mut self.vcols);
 			// Its clock runs one walk behind, so the water and the shimmer carry on unbroken when the camera passes through.
-			self.draw_view(target, &view, &mut through, &mut vcols, None, lt - self.maze.duration);
+			self.draw_view(
+				target,
+				&view,
+				&mut through,
+				&mut vcols,
+				None,
+				lt - self.maze.duration,
+				cx.bands,
+			);
 			self.vcols = vcols;
 		}
 		let mut cols = core::mem::take(&mut self.cols);
@@ -802,13 +811,14 @@ impl Scene for MazeScene {
 			&mut cols,
 			if near_portal { Some(&through) } else { None },
 			lt,
+			cx.bands,
 		);
 		self.cols = cols;
 		self.through = through;
 		if self.shafts
 			&& let Some((wx, wy, strength)) = self.window
 		{
-			self.light_shafts(out, wx, wy, strength);
+			self.light_shafts(out, wx, wy, strength, cx.bands);
 		}
 	}
 
@@ -932,6 +942,7 @@ impl MazeScene {
 
 	/// Casts and draws one view at walk time `t`; returns the brightest window or portal on screen. `through` is the view through the portal, shown
 	/// in its aperture; a view with a clip plane is itself the view through the portal, and ignores everything before the plane.
+	#[allow(clippy::too_many_arguments)]
 	fn draw_view(
 		&self,
 		maze: &Maze,
@@ -940,6 +951,7 @@ impl MazeScene {
 		cols: &mut Cols,
 		through: Option<&Frame>,
 		t: f32,
+		bands: &dyn Bands,
 	) -> Option<(f32, f32, f32)> {
 		let (w, h) = (self.w, self.h);
 		let horizon = h as f32 * (0.5 + view.bob);
@@ -950,139 +962,162 @@ impl MazeScene {
 		let face_h = 2.0 * PLANE * h as f32 * WALL / w as f32;
 		let mut window = None;
 		let mut best = 0.0f32;
-		// Pass 1: cast each column, draw sky and wall, remember what is there.
-		for x in 0..w {
-			let camx = 2.0 * (x as f32 + 0.5) / w as f32 - 1.0;
-			let (rx, ry) = (dx + plx * camx, dy + ply * camx);
-			// A clipped view starts its rays on the plane through the start pose, facing its heading.
-			let (ox, oy, t0) = match view.clip {
-				Some((sx, sy, sh)) => {
-					let (fx, fy) = (cos(sh), sin(sh));
-					let facing = rx * fx + ry * fy;
-					let t0 = if facing > 1e-3 {
-						((sx - view.x) * fx + (sy - view.y) * fy).max(0.0) / facing
-					} else {
-						0.0
-					};
-					(view.x + rx * t0, view.y + ry * t0, t0)
-				}
-				None => (view.x, view.y, 0.0),
-			};
-			let (mut mx, mut my) = (floor_i(ox), floor_i(oy));
-			let ddx = if rx == 0.0 { 1e9 } else { (1.0 / rx).abs() };
-			let ddy = if ry == 0.0 { 1e9 } else { (1.0 / ry).abs() };
-			let (stepx, mut sdx) = if rx < 0.0 {
-				(-1, (ox - mx as f32) * ddx)
-			} else {
-				(1, (mx as f32 + 1.0 - ox) * ddx)
-			};
-			let (stepy, mut sdy) = if ry < 0.0 {
-				(-1, (oy - my as f32) * ddy)
-			} else {
-				(1, (my as f32 + 1.0 - oy) * ddy)
-			};
-			let mut side = 0;
-			let mut mat = STONE;
-			for _ in 0..128 {
-				if sdx < sdy {
-					sdx += ddx;
-					mx += stepx;
-					side = 0;
+		// Pass 1: cast each column, draw sky and wall, remember what is there. A band is a range of columns, and writes only its own.
+		let (out_px, c_dist, c_top, c_foot, c_u, c_mat, c_light) = (
+			Shared::new(&mut out.px),
+			Shared::new(&mut cols.dist),
+			Shared::new(&mut cols.top),
+			Shared::new(&mut cols.foot),
+			Shared::new(&mut cols.u),
+			Shared::new(&mut cols.mat),
+			Shared::new(&mut cols.light),
+		);
+		bands.run(w, &|columns| {
+			for x in columns {
+				let camx = 2.0 * (x as f32 + 0.5) / w as f32 - 1.0;
+				let (rx, ry) = (dx + plx * camx, dy + ply * camx);
+				// A clipped view starts its rays on the plane through the start pose, facing its heading.
+				let (ox, oy, t0) = match view.clip {
+					Some((sx, sy, sh)) => {
+						let (fx, fy) = (cos(sh), sin(sh));
+						let facing = rx * fx + ry * fy;
+						let t0 = if facing > 1e-3 {
+							((sx - view.x) * fx + (sy - view.y) * fy).max(0.0) / facing
+						} else {
+							0.0
+						};
+						(view.x + rx * t0, view.y + ry * t0, t0)
+					}
+					None => (view.x, view.y, 0.0),
+				};
+				let (mut mx, mut my) = (floor_i(ox), floor_i(oy));
+				let ddx = if rx == 0.0 { 1e9 } else { (1.0 / rx).abs() };
+				let ddy = if ry == 0.0 { 1e9 } else { (1.0 / ry).abs() };
+				let (stepx, mut sdx) = if rx < 0.0 {
+					(-1, (ox - mx as f32) * ddx)
 				} else {
-					sdy += ddy;
-					my += stepy;
-					side = 1;
+					(1, (mx as f32 + 1.0 - ox) * ddx)
+				};
+				let (stepy, mut sdy) = if ry < 0.0 {
+					(-1, (oy - my as f32) * ddy)
+				} else {
+					(1, (my as f32 + 1.0 - oy) * ddy)
+				};
+				let mut side = 0;
+				let mut mat = STONE;
+				for _ in 0..128 {
+					if sdx < sdy {
+						sdx += ddx;
+						mx += stepx;
+						side = 0;
+					} else {
+						sdy += ddy;
+						my += stepy;
+						side = 1;
+					}
+					if mx < 0 || my < 0 || mx as usize >= g || my as usize >= g {
+						break;
+					}
+					let b = maze.blocks[my as usize * g + mx as usize];
+					if b != EMPTY {
+						mat = b;
+						break;
+					}
 				}
-				if mx < 0 || my < 0 || mx as usize >= g || my as usize >= g {
-					break;
+				let dist = (if side == 0 { sdx - ddx } else { sdy - ddy } + t0).max(0.02);
+				let hit = if side == 0 { view.y + dist * ry } else { view.x + dist * rx };
+				let mut u = fract(hit);
+				if (side == 0 && rx > 0.0) || (side == 1 && ry < 0.0) {
+					u = 1.0 - u;
 				}
-				let b = maze.blocks[my as usize * g + mx as usize];
-				if b != EMPTY {
-					mat = b;
-					break;
+				let wall_h = h as f32 / dist * WALL;
+				let top = horizon - wall_h * (1.0 - EYE);
+				let foot = horizon + wall_h * EYE;
+				let (lx, ly) = (
+					if side == 0 { mx - stepx } else { mx },
+					if side == 1 { my - stepy } else { my },
+				);
+				let glow = if lx >= 0 && ly >= 0 && (lx as usize) < g && (ly as usize) < g {
+					maze.glow[ly as usize * g + lx as usize]
+				} else {
+					0.0
+				};
+				let light = (if side == 1 { 0.82 } else { 1.0 }) * 256.0;
+				let col_light = (light * (1.0 + glow * 0.5)) as u16;
+				// SAFETY: column `x` belongs to this band alone, in `out` and in each of the column arrays.
+				unsafe {
+					c_dist.set(x, dist);
+					c_top.set(x, top as i32);
+					c_foot.set(x, foot as i32);
+					c_u.set(x, u);
+					c_mat.set(x, mat);
+					c_light.set(x, col_light);
+				}
+				// Sky above the horizon from the panorama, by the ray's angle.
+				let sky_x = ((fract(atan2(ry, rx) / TAU) * self.sky_w as f32) as usize) % self.sky_w;
+				let hz = horizon as i32;
+				let sky_rows = self.sky_h as i32;
+				for y in 0..hz.min(h as i32).max(0) {
+					let sy = (sky_rows - (hz - y)).max(0) as usize;
+					// SAFETY: column `x` is ours.
+					unsafe { out_px.set(y as usize * w + x, self.sky[sy * self.sky_w + sky_x]) };
+				}
+				// The wall slice.
+				let tex = &self.tex[if mat == PORTAL { STONE } else { mat } as usize];
+				let fogk = (saturate((dist - 1.0) / 9.0) * 230.0) as u32;
+				let fogk = if mat == WINDOW || mat == PORTAL { fogk / 3 } else { fogk };
+				let tu = ((u * ts as f32) as i32).clamp(0, ts - 1) as usize;
+				let span = foot - top;
+				let v_step = ((ts as f32 / span) * 65_536.0) as i32;
+				let y0 = (top.max(0.0)) as i32;
+				let y1 = (foot as i32).min(h as i32);
+				let mut v = ((y0 as f32 - top) / span * ts as f32 * 65_536.0) as i32;
+				let lightk = col_light as u32;
+				for y in y0..y1 {
+					let tv = (v >> 16).clamp(0, ts - 1);
+					let texel = tex[tv as usize * self.ts + tu];
+					v += v_step;
+					let i = y as usize * w + x;
+					if mat == PORTAL {
+						let fy = (horizon - y as f32 - 0.5) / span * face_h;
+						match self.portal_face(u - 0.5, fy, t) {
+							None => {
+								let c = match through {
+									Some(f) => f.px[i],
+									None => mixf(self.pal.sun, 0xFFFFFF, 0.5),
+								};
+								// SAFETY: column `x` is ours.
+								unsafe { out_px.set(i, c) };
+								continue;
+							}
+							Some(c) if c != 0 => {
+								// SAFETY: as above.
+								unsafe { out_px.set(i, c) };
+								continue;
+							}
+							_ => {}
+						}
+					}
+					if texel & CUT != 0 {
+						continue;
+					}
+					// Dusk light from the sky warms the tops of the walls; the feet fall into shadow.
+					let k = lightk * self.wall_shade[(tv * 64 / ts) as usize] as u32 >> 8;
+					let lit = if mat == WINDOW {
+						scale_wide(texel, 330)
+					} else {
+						screen(scale_wide(texel, k), self.wall_warm[(tv * 64 / ts) as usize])
+					};
+					// SAFETY: as above.
+					unsafe { out_px.set(i, mix(lit, self.fog, fogk)) };
 				}
 			}
-			let dist = (if side == 0 { sdx - ddx } else { sdy - ddy } + t0).max(0.02);
-			let hit = if side == 0 { view.y + dist * ry } else { view.x + dist * rx };
-			let mut u = fract(hit);
-			if (side == 0 && rx > 0.0) || (side == 1 && ry < 0.0) {
-				u = 1.0 - u;
-			}
-			let wall_h = h as f32 / dist * WALL;
-			let top = horizon - wall_h * (1.0 - EYE);
-			let foot = horizon + wall_h * EYE;
-			let (lx, ly) = (
-				if side == 0 { mx - stepx } else { mx },
-				if side == 1 { my - stepy } else { my },
-			);
-			let glow = if lx >= 0 && ly >= 0 && (lx as usize) < g && (ly as usize) < g {
-				maze.glow[ly as usize * g + lx as usize]
-			} else {
-				0.0
-			};
-			let light = (if side == 1 { 0.82 } else { 1.0 }) * 256.0;
-			cols.dist[x] = dist;
-			cols.top[x] = top as i32;
-			cols.foot[x] = foot as i32;
-			cols.u[x] = u;
-			cols.mat[x] = mat;
-			cols.light[x] = (light * (1.0 + glow * 0.5)) as u16;
+		});
+		for x in 0..w {
+			let (mat, dist) = (cols.mat[x], cols.dist[x]);
 			if (mat == WINDOW || mat == PORTAL) && 1.0 / dist > best {
 				best = 1.0 / dist;
 				window = Some((x as f32, horizon, best));
-			}
-			// Sky above the horizon from the panorama, by the ray's angle.
-			let sky_x = ((fract(atan2(ry, rx) / TAU) * self.sky_w as f32) as usize) % self.sky_w;
-			let hz = horizon as i32;
-			let sky_rows = self.sky_h as i32;
-			for y in 0..hz.min(h as i32).max(0) {
-				let sy = (sky_rows - (hz - y)).max(0) as usize;
-				out.px[y as usize * w + x] = self.sky[sy * self.sky_w + sky_x];
-			}
-			// The wall slice.
-			let tex = &self.tex[if mat == PORTAL { STONE } else { mat } as usize];
-			let fogk = (saturate((dist - 1.0) / 9.0) * 230.0) as u32;
-			let fogk = if mat == WINDOW || mat == PORTAL { fogk / 3 } else { fogk };
-			let tu = ((u * ts as f32) as i32).clamp(0, ts - 1) as usize;
-			let span = foot - top;
-			let v_step = ((ts as f32 / span) * 65_536.0) as i32;
-			let y0 = (top.max(0.0)) as i32;
-			let y1 = (foot as i32).min(h as i32);
-			let mut v = ((y0 as f32 - top) / span * ts as f32 * 65_536.0) as i32;
-			let lightk = cols.light[x] as u32;
-			for y in y0..y1 {
-				let tv = (v >> 16).clamp(0, ts - 1);
-				let texel = tex[tv as usize * self.ts + tu];
-				v += v_step;
-				let i = y as usize * w + x;
-				if mat == PORTAL {
-					let fy = (horizon - y as f32 - 0.5) / span * face_h;
-					match self.portal_face(u - 0.5, fy, t) {
-						None => {
-							out.px[i] = match through {
-								Some(f) => f.px[i],
-								None => mixf(self.pal.sun, 0xFFFFFF, 0.5),
-							};
-							continue;
-						}
-						Some(c) if c != 0 => {
-							out.px[i] = c;
-							continue;
-						}
-						_ => {}
-					}
-				}
-				if texel & CUT != 0 {
-					continue;
-				}
-				// Dusk light from the sky warms the tops of the walls; the feet fall into shadow.
-				let k = lightk * self.wall_shade[(tv * 64 / ts) as usize] as u32 >> 8;
-				let lit = if mat == WINDOW {
-					scale_wide(texel, 330)
-				} else {
-					screen(scale_wide(texel, k), self.wall_warm[(tv * 64 / ts) as usize])
-				};
-				out.px[i] = mix(lit, self.fog, fogk);
 			}
 		}
 		// Pass 2: the floor, row by row, with the walls mirrored in it.
@@ -1095,136 +1130,152 @@ impl MazeScene {
 			_ => 0.4,
 		};
 		let start = (horizon as i32 + 1).max(0) as usize;
-		for y in start..h {
-			let p = y as f32 - horizon;
-			let row_dist = (EYE * h as f32 * WALL) / p;
-			let fx0 = view.x + row_dist * r0x;
-			let fy0 = view.y + row_dist * r0y;
-			let sx = row_dist * (r1x - r0x) / w as f32;
-			let sy = row_dist * (r1y - r0y) / w as f32;
-			let mut fu = round_i(fx0 * fts as f32 * 256.0);
-			let mut fv = round_i(fy0 * fts as f32 * 256.0);
-			let su = round_i(sx * fts as f32 * 256.0);
-			let sv = round_i(sy * fts as f32 * 256.0);
-			let fogk = (saturate((row_dist - 1.0) / 9.0) * 230.0) as u32;
-			// Grazing rows reflect more (Fresnel).
-			let fres = saturate(reflectivity * (0.55 + 0.6 * (1.0 - saturate(p / (h as f32 * 0.5)))));
-			let rk = (fres * 256.0) as u32;
-			let wob = if self.ripple {
-				sin(row_dist * 9.0 - t * 2.6) * (2.0 + 6.0 / row_dist)
-			} else {
-				0.0
-			};
-			for x in 0..w {
-				let foot = cols.foot[x];
-				if (y as i32) < foot {
+		let cols = &*cols;
+		let out_px = Shared::new(&mut out.px);
+		bands.run(h.saturating_sub(start), &|rows| {
+			for y in start + rows.start..start + rows.end {
+				let p = y as f32 - horizon;
+				let row_dist = (EYE * h as f32 * WALL) / p;
+				let fx0 = view.x + row_dist * r0x;
+				let fy0 = view.y + row_dist * r0y;
+				let sx = row_dist * (r1x - r0x) / w as f32;
+				let sy = row_dist * (r1y - r0y) / w as f32;
+				let mut fu = round_i(fx0 * fts as f32 * 256.0);
+				let mut fv = round_i(fy0 * fts as f32 * 256.0);
+				let su = round_i(sx * fts as f32 * 256.0);
+				let sv = round_i(sy * fts as f32 * 256.0);
+				let fogk = (saturate((row_dist - 1.0) / 9.0) * 230.0) as u32;
+				// Grazing rows reflect more (Fresnel).
+				let fres = saturate(reflectivity * (0.55 + 0.6 * (1.0 - saturate(p / (h as f32 * 0.5)))));
+				let rk = (fres * 256.0) as u32;
+				let wob = if self.ripple {
+					sin(row_dist * 9.0 - t * 2.6) * (2.0 + 6.0 / row_dist)
+				} else {
+					0.0
+				};
+				for x in 0..w {
+					let foot = cols.foot[x];
+					if (y as i32) < foot {
+						fu = fu.wrapping_add(su);
+						fv = fv.wrapping_add(sv);
+						continue;
+					}
+					let ft = self.floor_tex[(((fv >> 8) & (fts - 1)) * fts + ((fu >> 8) & (fts - 1))) as usize];
 					fu = fu.wrapping_add(su);
 					fv = fv.wrapping_add(sv);
-					continue;
-				}
-				let ft = self.floor_tex[(((fv >> 8) & (fts - 1)) * fts + ((fu >> 8) & (fts - 1))) as usize];
-				fu = fu.wrapping_add(su);
-				fv = fv.wrapping_add(sv);
-				let mut c = ft;
-				if self.reflect {
-					// The wall column mirrored about its foot; above its top, the mirrored sky (darker).
-					let my = 2 * foot - y as i32 + wob as i32;
-					let top = cols.top[x];
-					let refl = if my >= top && my < foot {
-						let span = (foot - top).max(1);
-						let tv = ((my - top) * fts / span).clamp(0, fts - 1) as usize;
-						let mat = cols.mat[x];
-						let tu = ((cols.u[x] * fts as f32) as i32).clamp(0, fts - 1) as usize;
-						if mat == PORTAL {
-							let fy = (horizon - my as f32 - 0.5) / span as f32 * face_h;
-							match self.portal_face(cols.u[x] - 0.5, fy, t) {
-								None => through
-									.map(|f| f.px[my.clamp(0, h as i32 - 1) as usize * w + x])
-									.unwrap_or(self.pal.sun),
-								Some(c) if c != 0 => c,
-								_ => scale_wide(self.tex[STONE as usize][tv * self.ts + tu], cols.light[x] as u32),
-							}
-						} else {
-							let texel = self.tex[mat as usize][tv * self.ts + tu];
-							if texel & CUT != 0 {
-								self.sky[(self.sky_h - 2) * self.sky_w]
-							} else if mat == WINDOW {
-								texel
+					let mut c = ft;
+					if self.reflect {
+						// The wall column mirrored about its foot; above its top, the mirrored sky (darker).
+						let my = 2 * foot - y as i32 + wob as i32;
+						let top = cols.top[x];
+						let refl = if my >= top && my < foot {
+							let span = (foot - top).max(1);
+							let tv = ((my - top) * fts / span).clamp(0, fts - 1) as usize;
+							let mat = cols.mat[x];
+							let tu = ((cols.u[x] * fts as f32) as i32).clamp(0, fts - 1) as usize;
+							if mat == PORTAL {
+								let fy = (horizon - my as f32 - 0.5) / span as f32 * face_h;
+								match self.portal_face(cols.u[x] - 0.5, fy, t) {
+									None => through
+										.map(|f| f.px[my.clamp(0, h as i32 - 1) as usize * w + x])
+										.unwrap_or(self.pal.sun),
+									Some(c) if c != 0 => c,
+									_ => scale_wide(self.tex[STONE as usize][tv * self.ts + tu], cols.light[x] as u32),
+								}
 							} else {
-								scale_wide(texel, cols.light[x] as u32)
+								let texel = self.tex[mat as usize][tv * self.ts + tu];
+								if texel & CUT != 0 {
+									self.sky[(self.sky_h - 2) * self.sky_w]
+								} else if mat == WINDOW {
+									texel
+								} else {
+									scale_wide(texel, cols.light[x] as u32)
+								}
 							}
-						}
-					} else if my >= 0 && my < top {
-						out.px[my as usize * w + x]
-					} else {
-						c
-					};
-					c = mix(c, scale(refl, 200), rk);
+						} else if my >= 0 && my < top {
+							// SAFETY: row `my` lies above the wall's top, so above the horizon, and pass 2 writes only below it.
+							unsafe { out_px.get(my as usize * w + x) }
+						} else {
+							c
+						};
+						c = mix(c, scale(refl, 200), rk);
+					}
+					if self.day {
+						c = scale_wide(c, 360);
+					}
+					// SAFETY: row `y` belongs to this band alone.
+					unsafe { out_px.set(y * w + x, mix(c, self.fog, fogk)) };
 				}
-				if self.day {
-					c = scale_wide(c, 360);
-				}
-				out.px[y * w + x] = mix(c, self.fog, fogk);
 			}
-		}
+		});
 		window
 	}
 
 	/// Light shafts: at a quarter of the size, the bright parts are blurred along lines towards the window's centre, then added.
-	fn light_shafts(&mut self, out: &mut Frame, wx: f32, wy: f32, strength: f32) {
+	fn light_shafts(&mut self, out: &mut Frame, wx: f32, wy: f32, strength: f32, bands: &dyn Bands) {
 		let (w, h) = (out.w, out.h);
 		let (qw, qh) = ((w / 4).max(1), (h / 4).max(1));
 		self.shaft_buf.clear();
 		self.shaft_buf.resize(qw * qh, 0);
 		// The bright pass at a quarter of the size.
 		let mut bright = vec![0u32; qw * qh];
-		for y in 0..qh {
-			for x in 0..qw {
-				let c = out.px[(y * 4).min(h - 1) * w + (x * 4).min(w - 1)];
-				let l = colour::luma(c);
-				bright[y * qw + x] = if l > 170 { scale(c, ((l - 170) * 3).min(256)) } else { 0 };
+		let src = &out.px;
+		crate::bands::rows(bands, &mut bright, qw, &|band| {
+			for y in band.y0..band.y1 {
+				for x in 0..qw {
+					let c = src[(y * 4).min(h - 1) * w + (x * 4).min(w - 1)];
+					let l = colour::luma(c);
+					band.set(x, y, if l > 170 { scale(c, ((l - 170) * 3).min(256)) } else { 0 });
+				}
 			}
-		}
+		});
 		let (cxq, cyq) = (wx / 4.0, wy / 4.0);
 		let k = saturate(strength * 1.2) * 0.55;
-		for y in 0..qh {
-			for x in 0..qw {
-				let (mut sx, mut sy) = (x as f32, y as f32);
-				let (stx, sty) = ((cxq - sx) / 14.0, (cyq - sy) / 14.0);
-				let (mut r, mut g, mut b) = (0u32, 0u32, 0u32);
-				let mut weight = 256u32;
-				for _ in 0..14 {
-					let (ix, iy) = (sx as i32, sy as i32);
-					if ix >= 0 && iy >= 0 && (ix as usize) < qw && (iy as usize) < qh {
-						let c = bright[iy as usize * qw + ix as usize];
-						r += colour::r(c) * weight >> 8;
-						g += colour::g(c) * weight >> 8;
-						b += colour::b(c) * weight >> 8;
+		let bright = &bright;
+		crate::bands::rows(bands, &mut self.shaft_buf, qw, &|band| {
+			for y in band.y0..band.y1 {
+				for x in 0..qw {
+					let (mut sx, mut sy) = (x as f32, y as f32);
+					let (stx, sty) = ((cxq - sx) / 14.0, (cyq - sy) / 14.0);
+					let (mut r, mut g, mut b) = (0u32, 0u32, 0u32);
+					let mut weight = 256u32;
+					for _ in 0..14 {
+						let (ix, iy) = (sx as i32, sy as i32);
+						if ix >= 0 && iy >= 0 && (ix as usize) < qw && (iy as usize) < qh {
+							let c = bright[iy as usize * qw + ix as usize];
+							r += colour::r(c) * weight >> 8;
+							g += colour::g(c) * weight >> 8;
+							b += colour::b(c) * weight >> 8;
+						}
+						weight = weight * 240 >> 8;
+						sx += stx;
+						sy += sty;
 					}
-					weight = weight * 240 >> 8;
-					sx += stx;
-					sy += sty;
+					let s = (k * 256.0 / 7.0) as u32;
+					let c = ((r * s >> 8).min(255) << 16) | ((g * s >> 8).min(255) << 8) | (b * s >> 8).min(255);
+					band.set(x, y, c);
 				}
-				let s = (k * 256.0 / 7.0) as u32;
-				let c = ((r * s >> 8).min(255) << 16) | ((g * s >> 8).min(255) << 8) | (b * s >> 8).min(255);
-				self.shaft_buf[y * qw + x] = c;
 			}
-		}
+		});
 		// Enlarge bilinearly, so the shafts stay soft.
 		let mut shafts = Frame::new(qw, qh);
 		shafts.px.copy_from_slice(&self.shaft_buf);
+		let shafts = &shafts;
 		let (sx_step, sy_step) = (((qw as i64) << 16) / w as i64, ((qh as i64) << 16) / h as i64);
-		for y in 0..h {
-			let sy = (y as i64 * sy_step - 32_768).max(0) as i32;
-			let mut sx = -32_768i64;
-			for x in 0..w {
-				let c = shafts.sample(sx.max(0) as i32, sy);
-				if c != 0 {
-					out.px[y * w + x] = screen(out.px[y * w + x], c);
+		crate::bands::rows(bands, &mut out.px, w, &|band| {
+			for y in band.y0..band.y1 {
+				let sy = (y as i64 * sy_step - 32_768).max(0) as i32;
+				let mut sx = -32_768i64;
+				for x in 0..w {
+					let c = shafts.sample(sx.max(0) as i32, sy);
+					if c != 0 {
+						let old = band.get(x, y);
+						band.set(x, y, screen(old, c));
+					}
+					sx += sx_step;
 				}
-				sx += sx_step;
 			}
-		}
+		});
 	}
 }
 

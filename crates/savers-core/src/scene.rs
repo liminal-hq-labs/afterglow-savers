@@ -3,6 +3,7 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
+use crate::bands::Bands;
 use crate::frame::Frame;
 use crate::palette::Palette;
 use crate::settings::Detail;
@@ -17,6 +18,8 @@ pub struct Ctx<'a> {
 	pub pal: &'a Palette,
 	/// Counts frames, for anything that should change every frame whatever the time (dither, grain).
 	pub frame_no: u32,
+	/// How passes over rows are shared between threads; the serial default runs them on the calling thread (SAV-D51).
+	pub bands: &'a dyn Bands,
 }
 
 /// How the finishing chain should treat the current frame.

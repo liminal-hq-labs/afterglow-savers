@@ -1039,16 +1039,20 @@ impl Scene for Ghostwriter {
 				let mut other = core::mem::replace(&mut self.other, Frame::new(1, 1));
 				self.draw_window(&mut other, era_of(i + 1), &st);
 				let k = (saturate((into - (len / 3.0 - 0.8)) / 0.8) * 256.0) as u32;
-				for (a, &b) in win.px.iter_mut().zip(&other.px) {
-					*a = mix(*a, b, k);
-				}
+				let blend = &other.px;
+				let ww = win.w;
+				crate::bands::rows(cx.bands, &mut win.px, ww, &|band| {
+					let base = band.y0 * ww;
+					for (n, a) in band.px.iter_mut().enumerate() {
+						*a = mix(*a, blend[base + n], k);
+					}
+				});
 				self.other = other;
 			}
 		} else {
 			self.draw_window(&mut win, Era::Modern, &st);
 		}
 		// The desk, then the window placed on it: drifting, slowly turning and breathing in size.
-		out.px.copy_from_slice(&self.desk.px);
 		let (w, h) = (self.w as f32, self.h as f32);
 		let ang = if self.tilt {
 			0.035 * sin(t * 0.09) + 0.02 * sin(t * 0.23)
@@ -1069,30 +1073,39 @@ impl Scene for Ghostwriter {
 		let (sdx, sdy) = (h * 0.018, h * 0.026);
 		let (inv_ww, inv_wh) = (1.0 / win.w as f32, 1.0 / win.h as f32);
 		let (lamp_u, lamp_v) = (0.5 + 0.55 * sin(t * 0.11), 0.4 + 0.45 * sin(t * 0.083 + 2.0));
-		for y in y0..y1 {
-			for x in x0..x1 {
-				let (dx, dy) = (x as f32 + 0.5 - cxw, y as f32 + 0.5 - cyw);
-				let u = dx * ca + dy * sa + hw;
-				let v = -dx * sa + dy * ca + hh;
-				let i = y * self.w + x;
-				if u >= 0.0 && v >= 0.0 && u < win.w as f32 - 1.0 && v < win.h as f32 - 1.0 {
-					// A desk lamp's pool wanders slowly over the window, so even the plain page is never still (SAV-D12).
-					let (lu, lv) = (u * inv_ww - lamp_u, v * inv_wh - lamp_v);
-					let k = 0.6 + 0.34 * saturate(1.0 - (lu * lu + lv * lv) * 1.6);
-					out.px[i] = scale(win.sample((u * 65_536.0) as i32, (v * 65_536.0) as i32), (k * 256.0) as u32);
-				} else if shadow {
-					// A soft shadow down and to the right of the window.
-					let (su, sv) = (u - sdx, v - sdy);
-					let out_u = (-su).max(su - win.w as f32).max(0.0);
-					let out_v = (-sv).max(sv - win.h as f32).max(0.0);
-					let d = sqrt(out_u * out_u + out_v * out_v);
-					let k = 1.0 - saturate(d / (h * 0.03));
-					if k > 0.0 {
-						out.px[i] = scale(out.px[i], 256 - (k * k * 150.0) as u32);
+		let desk = &self.desk.px;
+		let win_ref = &win;
+		let sw = self.w;
+		crate::bands::rows(cx.bands, &mut out.px, self.w, &|band| {
+			band.px.copy_from_slice(&desk[band.y0 * sw..band.y1 * sw]);
+			for y in y0.max(band.y0)..y1.min(band.y1) {
+				for x in x0..x1 {
+					let (dx, dy) = (x as f32 + 0.5 - cxw, y as f32 + 0.5 - cyw);
+					let u = dx * ca + dy * sa + hw;
+					let v = -dx * sa + dy * ca + hh;
+					let i = (y - band.y0) * sw + x;
+					if u >= 0.0 && v >= 0.0 && u < win_ref.w as f32 - 1.0 && v < win_ref.h as f32 - 1.0 {
+						// A desk lamp's pool wanders slowly over the window, so even the plain page is never still (SAV-D12).
+						let (lu, lv) = (u * inv_ww - lamp_u, v * inv_wh - lamp_v);
+						let k = 0.6 + 0.34 * saturate(1.0 - (lu * lu + lv * lv) * 1.6);
+						band.px[i] = scale(
+							win_ref.sample((u * 65_536.0) as i32, (v * 65_536.0) as i32),
+							(k * 256.0) as u32,
+						);
+					} else if shadow {
+						// A soft shadow down and to the right of the window.
+						let (su, sv) = (u - sdx, v - sdy);
+						let out_u = (-su).max(su - win_ref.w as f32).max(0.0);
+						let out_v = (-sv).max(sv - win_ref.h as f32).max(0.0);
+						let d = sqrt(out_u * out_u + out_v * out_v);
+						let k = 1.0 - saturate(d / (h * 0.03));
+						if k > 0.0 {
+							band.px[i] = scale(band.px[i], 256 - (k * k * 150.0) as u32);
+						}
 					}
 				}
 			}
-		}
+		});
 		self.win = win;
 	}
 

@@ -17,6 +17,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::bands::{Bands, Shared};
 use crate::colour::{self, mix, mixf, scale};
 use crate::frame::Frame;
 use crate::math::{TAU, cos, exp, floor, fract, sin, smoothstep};
@@ -382,8 +383,8 @@ pub struct Ink {
 	gh: usize,
 	vx: Vec<i32>,
 	vy: Vec<i32>,
-	rowx: Vec<i32>,
-	rowy: Vec<i32>,
+	/// The frame as it was before a pass that reads its neighbours (the aurora, the relief), so bands do not see each other's work.
+	snap: Vec<u32>,
 	/// Per-column shimmer of the aurora rays, 0 to 256.
 	rays: Vec<u32>,
 	seed: u32,
@@ -436,8 +437,7 @@ impl Ink {
 			gh,
 			vx: vec![0; gw * gh],
 			vy: vec![0; gw * gh],
-			rowx: vec![0; gw],
-			rowy: vec![0; gw],
+			snap: Vec::new(),
 			rays: vec![256; w],
 			seed,
 			aurora: 0.0,
@@ -452,7 +452,7 @@ impl Ink {
 	}
 
 	/// The flow at time t on the coarse grid, in render pixels per second.
-	fn flow(&mut self, t: f32) {
+	fn flow(&mut self, t: f32, bands: &dyn Bands) {
 		let (w, h) = (self.w as f32, self.h as f32);
 		let unit = h;
 		let cyc = fract(t / CYCLE) * CYCLE;
@@ -479,29 +479,37 @@ impl Ink {
 		let ph1 = t * 0.05;
 		let ph2 = t * 0.037;
 		let drift = (unit * 0.01 * sin(t * 0.013), unit * 0.008 * cos(t * 0.011));
-		for gy in 0..self.gh {
-			let y = (gy * self.grid) as f32;
-			for gx in 0..self.gw {
-				let x = (gx * self.grid) as f32;
-				let mut u = shear * sin(y * k1 + ph1) + drift.0;
-				let mut v = shear * 0.6 * sin(x * k2 + ph2) + drift.1;
-				for &(cx, cy, s, core2) in &centres {
-					let dx = x - cx;
-					let dy = y - cy;
-					let r2 = dx * dx + dy * dy + 1.0;
-					// Lamb-Oseen vortex: tangential speed s/r·(1 - e^(-r²/core²)).
-					let f = s * (1.0 - exp(-r2 / core2)) / r2;
-					u -= dy * f;
-					v += dx * f;
+		let (grid, gw) = (self.grid, self.gw);
+		let (vxs, vys) = (Shared::new(&mut self.vx), Shared::new(&mut self.vy));
+		bands.run(self.gh, &|rows| {
+			// SAFETY: the bands' grid rows are disjoint.
+			let cells = rows.start * gw..rows.end * gw;
+			let (vxs, vys) = unsafe { (vxs.slice(cells.clone()), vys.slice(cells)) };
+			for gy in rows.clone() {
+				let y = (gy * grid) as f32;
+				for gx in 0..gw {
+					let x = (gx * grid) as f32;
+					let mut u = shear * sin(y * k1 + ph1) + drift.0;
+					let mut v = shear * 0.6 * sin(x * k2 + ph2) + drift.1;
+					for &(cx, cy, s, core2) in &centres {
+						let dx = x - cx;
+						let dy = y - cy;
+						let r2 = dx * dx + dy * dy + 1.0;
+						// Lamb-Oseen vortex: tangential speed s/r·(1 - e^(-r²/core²)).
+						let f = s * (1.0 - exp(-r2 / core2)) / r2;
+						u -= dy * f;
+						v += dx * f;
+					}
+					if lift > 0.0 {
+						// Curtains: an upward flow whose speed varies across the screen, so ink stretches into vertical sheets.
+						v -= lift * (0.6 + 0.4 * sin(x * k2 * 1.7 + t * 0.21)) * (0.6 + 0.4 * sin(x * k2 * 3.1 - t * 0.13));
+					}
+					let o = (gy - rows.start) * gw + gx;
+					vxs[o] = (u * 65_536.0) as i32;
+					vys[o] = (v * 65_536.0) as i32;
 				}
-				if lift > 0.0 {
-					// Curtains: an upward flow whose speed varies across the screen, so ink stretches into vertical sheets.
-					v -= lift * (0.6 + 0.4 * sin(x * k2 * 1.7 + t * 0.21)) * (0.6 + 0.4 * sin(x * k2 * 3.1 - t * 0.13));
-				}
-				self.vx[gy * self.gw + gx] = (u * 65_536.0) as i32;
-				self.vy[gy * self.gw + gx] = (v * 65_536.0) as i32;
 			}
-		}
+		});
 		// The rays' shimmer: fine vertical streaks that drift sideways.
 		if a > 0.0 {
 			for (x, ray) in self.rays.iter_mut().enumerate() {
@@ -514,43 +522,48 @@ impl Ink {
 
 	/// The aurora: light carried upwards from every bright band, column by column, fading with height, each column at its own
 	/// shimmering rate, so lit ink throws tall rays like the curtains of an aurora.
-	fn curtains(&self, out: &mut Frame) {
+	fn curtains(&self, out: &mut Frame, before: &[u32], bands: &dyn Bands) {
 		let (w, h) = (out.w, out.h);
 		let a = self.aurora;
 		// Rays reach about a third of the height at their longest.
 		let base = 1.0 - 3.5 / h as f32;
 		// The ink dims a little under the curtains, so they glow against it.
 		let dim = (256.0 - 90.0 * a) as u32;
-		for x in 0..w {
-			let shimmer = self.rays[x] as f32 / 256.0;
-			let keep = (256.0 * (base + (1.0 - base) * 0.5 * (shimmer - 1.0))).clamp(0.0, 255.0) as u32;
-			let gain = (a * 150.0 * shimmer) as u32;
-			let mut acc = 0u32;
-			for y in (0..h).rev() {
-				let i = y * w + x;
-				let c = out.px[i];
-				// The rays are fed from the pixel blended with its right-hand neighbour (not yet lit, since columns go left to
-				// right), so one bright pixel does not draw a scratch. Only bright, saturated ink feeds them; pale veins and the
-				// water do not.
-				let soft = mix(c, out.px[i + (x + 1 < w) as usize], 110);
-				let (r, g, b) = (colour::r(soft), colour::g(soft), colour::b(soft));
-				let chroma = r.max(g).max(b) - r.min(g).min(b);
-				let feed = if chroma > 70 && colour::luma(soft) > 60 {
-					scale(soft, gain.min(256))
-				} else {
-					0
-				};
-				// A decaying maximum, not a sum, so a tall band does not pile up into white.
-				let kept = scale(acc, keep);
-				acc = if colour::luma(feed) > colour::luma(kept) { feed } else { kept };
-				out.px[i] = colour::screen(scale(c, dim), acc);
+		let px = Shared::new(&mut out.px);
+		// A band is a range of columns: each is lit from the bottom up on its own, reading `before`.
+		bands.run(w, &|columns| {
+			for x in columns {
+				let shimmer = self.rays[x] as f32 / 256.0;
+				let keep = (256.0 * (base + (1.0 - base) * 0.5 * (shimmer - 1.0))).clamp(0.0, 255.0) as u32;
+				let gain = (a * 150.0 * shimmer) as u32;
+				let mut acc = 0u32;
+				for y in (0..h).rev() {
+					let i = y * w + x;
+					let c = before[i];
+					// The rays are fed from the pixel blended with its right-hand neighbour (not yet lit, since columns go left to
+					// right), so one bright pixel does not draw a scratch. Only bright, saturated ink feeds them; pale veins and
+					// the water do not.
+					let soft = mix(c, before[i + (x + 1 < w) as usize], 110);
+					let (r, g, b) = (colour::r(soft), colour::g(soft), colour::b(soft));
+					let chroma = r.max(g).max(b) - r.min(g).min(b);
+					let feed = if chroma > 70 && colour::luma(soft) > 60 {
+						scale(soft, gain.min(256))
+					} else {
+						0
+					};
+					// A decaying maximum, not a sum, so a tall band does not pile up into white.
+					let kept = scale(acc, keep);
+					acc = if colour::luma(feed) > colour::luma(kept) { feed } else { kept };
+					// SAFETY: column `x` belongs to this band alone.
+					unsafe { px.set(i, colour::screen(scale(c, dim), acc)) };
+				}
 			}
-		}
+		});
 	}
 
 	/// Moves both layers' maps along the flow by `dt` seconds. The grid velocities are first scaled by `dt` into 16.16 pixel
 	/// displacements, so the per-pixel work is 32-bit adds, shifts and small multiplies, which a Pentium does quickly.
-	fn advect(&mut self, dt: f32) {
+	fn advect(&mut self, dt: f32, bands: &dyn Bands) {
 		let (w, h) = (self.w, self.h);
 		let gs = self.grid as i32;
 		for (vx, vy) in self.vx.iter_mut().zip(self.vy.iter_mut()) {
@@ -559,49 +572,79 @@ impl Ink {
 		}
 		let maxx = (w as i32 - 1) << 16;
 		let maxy = (h as i32 - 1) << 16;
+		let gw = self.gw;
+		let (vx, vy) = (&self.vx, &self.vy);
 		let [la, lb] = &mut self.layers;
-		for y in 0..h {
-			let gy = y / gs as usize;
-			let ty = ((y as i32 % gs) << 8) / gs;
-			for gx in 0..self.gw {
-				let (i0, i1) = (gy * self.gw + gx, (gy + 1) * self.gw + gx);
-				self.rowx[gx] = self.vx[i0] + ((self.vx[i1] - self.vx[i0]) * ty >> 8);
-				self.rowy[gx] = self.vy[i0] + ((self.vy[i1] - self.vy[i0]) * ty >> 8);
-			}
-			for x in 0..w {
-				let gx = x / gs as usize;
-				let tx = ((x as i32 % gs) << 8) / gs;
-				let dx = self.rowx[gx] + ((self.rowx[gx + 1] - self.rowx[gx]) * tx >> 8);
-				let dy = self.rowy[gx] + ((self.rowy[gx + 1] - self.rowy[gx]) * tx >> 8);
-				let sx = ((x as i32) << 16) - dx;
-				let sy = ((y as i32) << 16) - dy;
-				let i = y * w + x;
-				if sx < 0 || sy < 0 || sx > maxx || sy > maxy {
-					// Ink flowing in from beyond the edge is fresh sheet.
-					(la.nu[i], la.nv[i]) = la.fresh_fx(sx, sy);
-					(lb.nu[i], lb.nv[i]) = lb.fresh_fx(sx, sy);
-					continue;
+		// The new maps are written a band of rows at a time from the old ones, which no band changes.
+		let mut news = [
+			core::mem::take(&mut la.nu),
+			core::mem::take(&mut la.nv),
+			core::mem::take(&mut lb.nu),
+			core::mem::take(&mut lb.nv),
+		];
+		{
+			let [anu, anv, bnu, bnv] = &mut news;
+			let (anu, anv, bnu, bnv) = (Shared::new(anu), Shared::new(anv), Shared::new(bnu), Shared::new(bnv));
+			let (la, lb) = (&*la, &*lb);
+			bands.run(h, &|rows| {
+				let cells = rows.start * w..rows.end * w;
+				// SAFETY: the bands' row ranges are disjoint.
+				let (anu, anv, bnu, bnv) = unsafe {
+					(
+						anu.slice(cells.clone()),
+						anv.slice(cells.clone()),
+						bnu.slice(cells.clone()),
+						bnv.slice(cells),
+					)
+				};
+				let mut rowx = vec![0i32; gw];
+				let mut rowy = vec![0i32; gw];
+				for y in rows.clone() {
+					let gy = y / gs as usize;
+					let ty = ((y as i32 % gs) << 8) / gs;
+					for gx in 0..gw {
+						let (i0, i1) = (gy * gw + gx, (gy + 1) * gw + gx);
+						rowx[gx] = vx[i0] + ((vx[i1] - vx[i0]) * ty >> 8);
+						rowy[gx] = vy[i0] + ((vy[i1] - vy[i0]) * ty >> 8);
+					}
+					for x in 0..w {
+						let gx = x / gs as usize;
+						let tx = ((x as i32 % gs) << 8) / gs;
+						let dx = rowx[gx] + ((rowx[gx + 1] - rowx[gx]) * tx >> 8);
+						let dy = rowy[gx] + ((rowy[gx + 1] - rowy[gx]) * tx >> 8);
+						let sx = ((x as i32) << 16) - dx;
+						let sy = ((y as i32) << 16) - dy;
+						let o = (y - rows.start) * w + x;
+						if sx < 0 || sy < 0 || sx > maxx || sy > maxy {
+							// Ink flowing in from beyond the edge is fresh sheet.
+							(anu[o], anv[o]) = la.fresh_fx(sx, sy);
+							(bnu[o], bnv[o]) = lb.fresh_fx(sx, sy);
+							continue;
+						}
+						let x0 = (sx >> 16) as usize;
+						let y0 = (sy >> 16) as usize;
+						let x1 = (x0 + 1).min(w - 1);
+						let y1 = (y0 + 1).min(h - 1);
+						let fx = (sx >> 8) & 0xFF;
+						let fy = (sy >> 8) & 0xFF;
+						// Map values wrap (they are positions on a tiling sheet), so differences are taken with wrapping arithmetic
+						// and shifted before the multiply to stay in 32 bits.
+						let lerp = |a: i32, b: i32, t: i32| a.wrapping_add((b.wrapping_sub(a) >> 8).wrapping_mul(t));
+						let (i00, i10, i01, i11) = (y0 * w + x0, y0 * w + x1, y1 * w + x0, y1 * w + x1);
+						for (layer, nu, nv) in [(la, &mut *anu, &mut *anv), (lb, &mut *bnu, &mut *bnv)] {
+							let top = lerp(layer.u[i00], layer.u[i10], fx);
+							let bot = lerp(layer.u[i01], layer.u[i11], fx);
+							nu[o] = lerp(top, bot, fy);
+							let top = lerp(layer.v[i00], layer.v[i10], fx);
+							let bot = lerp(layer.v[i01], layer.v[i11], fx);
+							nv[o] = lerp(top, bot, fy);
+						}
+					}
 				}
-				let x0 = (sx >> 16) as usize;
-				let y0 = (sy >> 16) as usize;
-				let x1 = (x0 + 1).min(w - 1);
-				let y1 = (y0 + 1).min(h - 1);
-				let fx = (sx >> 8) & 0xFF;
-				let fy = (sy >> 8) & 0xFF;
-				// Map values wrap (they are positions on a tiling sheet), so differences are taken with wrapping arithmetic and
-				// shifted before the multiply to stay in 32 bits.
-				let lerp = |a: i32, b: i32, t: i32| a.wrapping_add((b.wrapping_sub(a) >> 8).wrapping_mul(t));
-				let (i00, i10, i01, i11) = (y0 * w + x0, y0 * w + x1, y1 * w + x0, y1 * w + x1);
-				for layer in [&mut *la, &mut *lb] {
-					let top = lerp(layer.u[i00], layer.u[i10], fx);
-					let bot = lerp(layer.u[i01], layer.u[i11], fx);
-					layer.nu[i] = lerp(top, bot, fy);
-					let top = lerp(layer.v[i00], layer.v[i10], fx);
-					let bot = lerp(layer.v[i01], layer.v[i11], fx);
-					layer.nv[i] = lerp(top, bot, fy);
-				}
-			}
+			});
 		}
+		let [anu, anv, bnu, bnv] = news;
+		(la.nu, la.nv, lb.nu, lb.nv) = (anu, anv, bnu, bnv);
 		for layer in [la, lb] {
 			core::mem::swap(&mut layer.u, &mut layer.nu);
 			core::mem::swap(&mut layer.v, &mut layer.nv);
@@ -633,9 +676,9 @@ impl Scene for Ink {
 			let rows = (sheet.size / 48).max(1);
 			sheet.paint(rows);
 		}
-		self.flow(t);
+		self.flow(t, cx.bands);
 		if cx.dt > 0.0 {
-			self.advect(cx.dt);
+			self.advect(cx.dt, cx.bands);
 		}
 		// Layer weights: a triangle over each layer's two-cycle life, so the two always sum to one.
 		let wa = 1.0 - (fract(phase * 0.5) * 2.0 - 1.0).abs();
@@ -648,28 +691,35 @@ impl Scene for Ink {
 		let aurora = self.aurora > 0.01 && cx.detail >= Detail::Medium && !self.pal.light;
 		let smooth = self.smooth;
 		let [la, lb] = &self.layers;
-		for y in 0..h {
-			let row = &mut out.px[y * w..(y + 1) * w];
-			for (x, px) in row.iter_mut().enumerate() {
-				let i = y * w + x;
-				let ca = la.sheet.at(la.u[i], la.v[i], smooth);
-				let cb = lb.sheet.at(lb.u[i], lb.v[i], smooth);
-				let mut c = mix(ca, cb, wa256);
-				if light_sweep {
-					let d = (x + y) as f32 * inv * 1.6 - sweep_pos;
-					if d.abs() < 0.35 {
-						let k = 1.0 - d.abs() / 0.35;
-						c = colour::screen(c, scale(c, (k * k * 90.0) as u32));
+		crate::bands::rows(cx.bands, &mut out.px, w, &|band| {
+			for y in band.y0..band.y1 {
+				for (x, px) in band.row(y).iter_mut().enumerate() {
+					let i = y * w + x;
+					let ca = la.sheet.at(la.u[i], la.v[i], smooth);
+					let cb = lb.sheet.at(lb.u[i], lb.v[i], smooth);
+					let mut c = mix(ca, cb, wa256);
+					if light_sweep {
+						let d = (x + y) as f32 * inv * 1.6 - sweep_pos;
+						if d.abs() < 0.35 {
+							let k = 1.0 - d.abs() / 0.35;
+							c = colour::screen(c, scale(c, (k * k * 90.0) as u32));
+						}
 					}
+					*px = c;
 				}
-				*px = c;
 			}
-		}
+		});
 		if aurora {
-			self.curtains(out);
+			let mut snap = core::mem::take(&mut self.snap);
+			crate::bands::copy(cx.bands, &mut snap, &out.px, w);
+			self.curtains(out, &snap, cx.bands);
+			self.snap = snap;
 		}
 		if cx.detail >= Detail::High {
-			relief(out, self.pal.light);
+			let mut snap = core::mem::take(&mut self.snap);
+			crate::bands::copy(cx.bands, &mut snap, &out.px, w);
+			relief(out, &snap, self.pal.light, cx.bands);
+			self.snap = snap;
 		}
 	}
 
@@ -698,21 +748,27 @@ impl Scene for Ink {
 
 /// Wet-ink relief: each pixel is lit by how much brighter it is than its upper-left neighbour, so every band of ink reads as a thin
 /// raised film catching a light from the top left. Runs from the bottom right so each pixel still sees its neighbour's old value.
-fn relief(out: &mut Frame, light: bool) {
+fn relief(out: &mut Frame, before: &[u32], light: bool, bands: &dyn Bands) {
 	let w = out.w;
-	for y in (1..out.h).rev() {
-		for x in (1..w).rev() {
-			let c = out.px[y * w + x];
-			let n = out.px[(y - 1) * w + x - 1];
-			let d = colour::luma(c) as i32 - colour::luma(n) as i32;
-			out.px[y * w + x] = if d > 2 {
-				let k = (d * if light { 3 } else { 5 }).min(200) as u32;
-				colour::screen(c, scale(0xFFF4E8, k))
-			} else if d < -2 {
-				scale(c, (256 + d * 2).max(150) as u32)
-			} else {
-				c
-			};
+	crate::bands::rows(bands, &mut out.px, w, &|band| {
+		for y in band.y0.max(1)..band.y1 {
+			for x in 1..w {
+				let c = before[y * w + x];
+				let n = before[(y - 1) * w + x - 1];
+				let d = colour::luma(c) as i32 - colour::luma(n) as i32;
+				band.set(
+					x,
+					y,
+					if d > 2 {
+						let k = (d * if light { 3 } else { 5 }).min(200) as u32;
+						colour::screen(c, scale(0xFFF4E8, k))
+					} else if d < -2 {
+						scale(c, (256 + d * 2).max(150) as u32)
+					} else {
+						c
+					},
+				);
+			}
 		}
-	}
+	});
 }

@@ -144,6 +144,7 @@ impl Scene for Collection {
 			detail: cx.detail,
 			pal: cx.pal,
 			frame_no: cx.frame_no,
+			bands: cx.bands,
 		};
 		self.current.render(&sub, out);
 		self.fade = self.current.hints(&sub).fade;
@@ -168,12 +169,17 @@ impl Scene for Collection {
 				detail: cx.detail,
 				pal: cx.pal,
 				frame_no: cx.frame_no,
+				bands: cx.bands,
 			};
 			next.render(&nsub, &mut self.other);
 			let k = (saturate(into / CROSS) * 256.0) as u32;
-			for (o, &b) in out.px.iter_mut().zip(&self.other.px) {
-				*o = mix(*o, b, k);
-			}
+			let other = &self.other.px;
+			crate::bands::rows(cx.bands, &mut out.px, out.w, &|band| {
+				let base = band.y0 * band.w;
+				for (n, o) in band.px.iter_mut().enumerate() {
+					*o = mix(*o, other[base + n], k);
+				}
+			});
 			self.fade = 1.0;
 		}
 	}
@@ -202,6 +208,7 @@ impl Scene for Collection {
 			detail: cx.detail,
 			pal: cx.pal,
 			frame_no: cx.frame_no,
+			bands: cx.bands,
 		};
 		let mut h = self.current.hints(&sub);
 		h.fade = self.fade;

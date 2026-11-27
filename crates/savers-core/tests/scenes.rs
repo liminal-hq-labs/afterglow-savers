@@ -7,8 +7,10 @@
 //! (SAV-D6). After a deliberate change of look, run with `SAVERS_UPDATE_GOLDEN=1` and say so in the commit.
 
 use std::fmt::Write;
+use std::ops::Range;
 use std::path::PathBuf;
 
+use savers_core::bands::{Bands, chunk};
 use savers_core::colour::luma;
 use savers_core::saver::{Saver, render_size};
 use savers_core::scenes::build;
@@ -239,5 +241,92 @@ fn every_saver_has_a_gentle_score() {
 		assert!(peak < 23_000, "{kind:?}: peak {peak} is within 3 dB of full scale");
 		let rms = (a.iter().map(|&v| (v as f64).powi(2)).sum::<f64>() / a.len() as f64).sqrt();
 		assert!(rms > 8.0, "{kind:?}: RMS {rms:.1} is silence");
+	}
+}
+
+/// Cuts a pass into `count` ranges and runs them one after another, last first, so a band that depended on its neighbour having run
+/// would show.
+struct Split {
+	count: usize,
+}
+
+impl Bands for Split {
+	fn run(&self, rows: usize, job: &(dyn Fn(Range<usize>) + Sync)) {
+		for i in (0..self.count).rev() {
+			let r = chunk(rows, self.count, i);
+			if !r.is_empty() {
+				job(r);
+			}
+		}
+	}
+}
+
+/// Cuts a pass into `count` ranges and runs each on its own thread.
+struct Threaded {
+	count: usize,
+}
+
+impl Bands for Threaded {
+	fn run(&self, rows: usize, job: &(dyn Fn(Range<usize>) + Sync)) {
+		std::thread::scope(|scope| {
+			for i in 0..self.count {
+				let r = chunk(rows, self.count, i);
+				if !r.is_empty() {
+					scope.spawn(move || job(r));
+				}
+			}
+		});
+	}
+}
+
+/// Hashes every frame of a run of `seconds`, at 10 frames a second, with the grain, the letterbox and every effect on.
+fn run_hash(kind: SaverKind, w: usize, h: usize, seconds: f64, bands: Option<&'static dyn Bands>) -> u64 {
+	let mut s = Settings::defaults(kind);
+	s.set(Key::Detail, 3);
+	s.set(Key::RenderScale, 100);
+	s.set(Key::Grain, 40);
+	s.set(Key::Letterbox, 1);
+	let (rw, rh) = render_size(&s, w, h, false);
+	let scene = build(kind, &s, 11, rw, rh);
+	let mut sv = Saver::new(s, scene, w, h, false);
+	if let Some(b) = bands {
+		sv.set_bands(b);
+	}
+	let mut all = 0xCBF2_9CE4_8422_2325u64;
+	let mut t = 0.0;
+	while t <= seconds {
+		let f = sv.at(t);
+		all = (all ^ fnv(&f.px)).wrapping_mul(0x0100_0000_01B3);
+		t += 0.1;
+	}
+	all
+}
+
+/// SAV-D51: the frame is the same byte for byte with any number of bands, in any order and on any number of threads. The sizes are
+/// odd and the times cross the places where the scenes change (the Ink's aurora, the Cracktro's transitions, the Ghostwriter's eras).
+#[test]
+fn bands_do_not_change_a_byte() {
+	for &kind in SCENES {
+		let seconds = match kind {
+			SaverKind::Ink => 52.0,
+			SaverKind::Cracktro => 33.0,
+			_ => 30.0,
+		};
+		let (w, h) = (203, 117);
+		let want = run_hash(kind, w, h, seconds, None);
+		for count in [1, 2, 3, 8] {
+			let sequential: &'static dyn Bands = Box::leak(Box::new(Split { count }));
+			assert_eq!(
+				run_hash(kind, w, h, seconds, Some(sequential)),
+				want,
+				"{kind:?} with {count} bands one after another"
+			);
+			let threaded: &'static dyn Bands = Box::leak(Box::new(Threaded { count }));
+			assert_eq!(
+				run_hash(kind, w, h, seconds, Some(threaded)),
+				want,
+				"{kind:?} with {count} bands on threads"
+			);
+		}
 	}
 }

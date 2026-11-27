@@ -9,12 +9,14 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 
+use savers_core::bands::Bands;
 use savers_core::bench::{P3_REFERENCE_MS, reference};
 use savers_core::saver::{Saver, render_size};
 use savers_core::scenes::build;
 use savers_core::settings::{Key, SaverKind, Settings, SettingsStore, fields};
 
 mod png;
+mod pool;
 
 const USAGE: &str = "\
 usage: savers-preview <command> [options]
@@ -22,6 +24,7 @@ usage: savers-preview <command> [options]
 commands:
   frames   render frames to PNG files: OUT/frame-00000.png and on
   bench    time every render scale and detail level, with a Pentium III estimate
+  threads  time 100% Ultra at --size with each count of --counts threads (default 1,2,4,8), for the scene or --scene all
   audio    render the scene's score alone to a WAV file (--out FILE.wav), from --from for --seconds
 
 options:
@@ -39,6 +42,8 @@ options:
   --seconds S         audio: how long to render (default 60); with --loop, one loop of the scene
   --rate N            audio: sample rate (default 48000)
   --volume N          audio: level in percent (default 100; the savers' own default is 28)
+  --threads N         share the heavy passes between N threads (default 1); the frames are the same byte for byte
+  --counts LIST      threads: the thread counts to time, comma separated (default 1,2,4,8)
   --pipe              frames: write raw RGB24 frames to standard output instead of PNG files (for ffmpeg -f rawvideo)
 ";
 
@@ -80,6 +85,9 @@ struct Opts {
 	seconds: f64,
 	rate: u32,
 	volume: u32,
+	threads: usize,
+	counts: Vec<usize>,
+	all: bool,
 }
 
 fn parse() -> Result<Opts, String> {
@@ -105,13 +113,20 @@ fn parse() -> Result<Opts, String> {
 		seconds: 60.0,
 		rate: savers_core::audio::FULL_RATE,
 		volume: 100,
+		threads: 1,
+		counts: vec![1, 2, 4, 8],
+		all: false,
 	};
 	while let Some(a) = args.next() {
 		let mut val = || args.next().ok_or(format!("{a} needs a value"));
 		match a.as_str() {
 			"--scene" => {
 				let v = val()?;
-				o.kind = SaverKind::from_name(&v).ok_or(format!("unknown scene {v}"))?;
+				if v == "all" {
+					o.all = true;
+				} else {
+					o.kind = SaverKind::from_name(&v).ok_or(format!("unknown scene {v}"))?;
+				}
 			}
 			"--size" => {
 				let v = val()?;
@@ -141,6 +156,13 @@ fn parse() -> Result<Opts, String> {
 			"--seconds" => o.seconds = val()?.parse().map_err(|_| "bad --seconds")?,
 			"--rate" => o.rate = val()?.parse().map_err(|_| "bad --rate")?,
 			"--volume" => o.volume = val()?.parse().map_err(|_| "bad --volume")?,
+			"--threads" => o.threads = val()?.parse().map_err(|_| "bad --threads")?,
+			"--counts" => {
+				o.counts = val()?
+					.split(',')
+					.map(|n| n.trim().parse().map_err(|_| "bad --counts".to_string()))
+					.collect::<Result<_, _>>()?;
+			}
 			"--help" | "-h" => return Err(String::new()),
 			_ => return Err(format!("unknown option {a}")),
 		}
@@ -153,10 +175,23 @@ fn parse() -> Result<Opts, String> {
 	Ok(o)
 }
 
-fn make(kind: SaverKind, settings: &Settings, seed: u32, size: (usize, usize)) -> Saver {
+/// The bands for `threads` threads: a pool kept for the rest of the run, or none for one.
+fn bands_for(threads: usize) -> Option<&'static dyn Bands> {
+	if threads <= 1 {
+		return None;
+	}
+	let pool: &'static pool::Pool = Box::leak(Box::new(pool::Pool::new(threads)));
+	Some(pool)
+}
+
+fn make(kind: SaverKind, settings: &Settings, seed: u32, size: (usize, usize), bands: Option<&'static dyn Bands>) -> Saver {
 	let (rw, rh) = render_size(settings, size.0, size.1, false);
 	let scene = build(kind, settings, seed, rw, rh);
-	Saver::new(settings.clone(), scene, size.0, size.1, false)
+	let mut saver = Saver::new(settings.clone(), scene, size.0, size.1, false);
+	if let Some(b) = bands {
+		saver.set_bands(b);
+	}
+	saver
 }
 
 fn frames(o: &Opts) -> Result<(), String> {
@@ -171,7 +206,7 @@ fn frames(o: &Opts) -> Result<(), String> {
 	let stdout = std::io::stdout();
 	let mut pipe = std::io::BufWriter::with_capacity(1 << 20, stdout.lock());
 	let mut rgb = Vec::new();
-	let mut saver = make(o.kind, &settings, o.seed, o.size);
+	let mut saver = make(o.kind, &settings, o.seed, o.size, bands_for(o.threads));
 	let dt = 1.0 / o.fps;
 	let mut t = 0.0f64;
 	let mut next = o.from;
@@ -222,6 +257,7 @@ fn bench(o: &Opts) -> Result<(), String> {
 	}
 	let ratio = P3_REFERENCE_MS / best;
 	let mut stdout = std::io::stdout();
+	let bands = bands_for(o.threads);
 	let _ = writeln!(
 		stdout,
 		"{} at {}x{}: reference loop {best:.2} ms on this host, a Pentium III 800 MHz is taken as {ratio:.1}x slower",
@@ -244,7 +280,7 @@ fn bench(o: &Opts) -> Result<(), String> {
 			store.set_dword("Detail", detail);
 			let settings = Settings::load(o.kind, &store);
 			let made = Instant::now();
-			let mut saver = make(o.kind, &settings, o.seed, o.size);
+			let mut saver = make(o.kind, &settings, o.seed, o.size, bands);
 			let start_ms = made.elapsed().as_secs_f64() * 1000.0;
 			let (rw, rh) = render_size(&settings, o.size.0, o.size.1, false);
 			// Frames are taken a second apart (each simulated as a 0.1 s step), so the timing covers the storyboard's shots and
@@ -270,6 +306,51 @@ fn bench(o: &Opts) -> Result<(), String> {
 				1000.0 / p3
 			);
 			let _ = settings.get(Key::Detail);
+		}
+	}
+	Ok(())
+}
+
+/// Times 100% Ultra at the window size for each thread count: frame time and frames a second, the mean of `--frames` frames a
+/// second apart in scene time.
+fn thread_bench(o: &Opts) -> Result<(), String> {
+	let kinds: Vec<SaverKind> = if o.all {
+		vec![
+			SaverKind::Cracktro,
+			SaverKind::Ghostwriter,
+			SaverKind::Maze,
+			SaverKind::Twilight,
+			SaverKind::Ink,
+		]
+	} else {
+		vec![o.kind]
+	};
+	let mut stdout = std::io::stdout();
+	let _ = writeln!(stdout, "100% Ultra at {}x{}, {} frames each", o.size.0, o.size.1, o.frames);
+	let _ = writeln!(stdout, "| Saver | Threads | ms per frame | fps |");
+	let _ = writeln!(stdout, "| --- | --- | --- | --- |");
+	for kind in kinds {
+		let mut store = MapStore {
+			dwords: o.store.dwords.clone(),
+			texts: o.store.texts.clone(),
+		};
+		store.set_dword("RenderScale", 100);
+		store.set_dword("Detail", 3);
+		let settings = Settings::load(kind, &store);
+		for &n in &o.counts {
+			let mut saver = make(kind, &settings, o.seed, o.size, bands_for(n));
+			let mut t = 0.0;
+			for _ in 0..3 {
+				saver.at(t);
+				t += 1.0;
+			}
+			let s = Instant::now();
+			for _ in 0..o.frames {
+				std::hint::black_box(saver.at(t));
+				t += 1.0;
+			}
+			let ms = s.elapsed().as_secs_f64() * 1000.0 / o.frames as f64;
+			let _ = writeln!(stdout, "| {} | {n} | {ms:.1} | {:.0} |", kind.title(), 1000.0 / ms);
 		}
 	}
 	Ok(())
@@ -378,6 +459,7 @@ fn main() -> ExitCode {
 	let r = match o.command.as_str() {
 		"frames" => frames(&o),
 		"bench" => bench(&o),
+		"threads" => thread_bench(&o),
 		"audio" => audio(&o),
 		other => Err(format!("unknown command {other}")),
 	};
