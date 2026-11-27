@@ -230,10 +230,18 @@ fn draw_planet(pix_in: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
 	if (k > 0.003) {
 		c = screen_blend(c, ramp_at(atmosphere_ramp, saturate1(k)));
 	}
-	// Anti-alias the limb over the last pixel.
-	let edge = (1.0 - sqrt(d2)) * radius;
+	// Anti-alias the limb over the last pixel, against the background as the halo lights it just outside, so the edge does not
+	// show a dark seam between the lit limb and the glow.
+	let d = sqrt(d2);
+	let edge = (1.0 - d) * radius;
 	if (edge < 1.0) {
-		return mix(pix, c, edge);
+		let side = saturate1(dot(n, light.xy) / max(d, 0.001) * 0.6 + 0.55);
+		let halo_k = side * atmos * 1.3;
+		var behind = pix;
+		if (halo_k > 0.004) {
+			behind = screen_blend(pix, ramp_at(atmosphere_ramp, halo_k * 0.9));
+		}
+		return mix(behind, c, edge);
 	}
 	return c;
 }
