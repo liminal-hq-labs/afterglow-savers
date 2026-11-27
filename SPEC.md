@@ -134,7 +134,7 @@ Group boxes hold the controls, in this tab order:
 
 ### Which one is shown
 
-The plain dialog is shown instead of the Afterglow one when high contrast is on (`SPI_GETHIGHCONTRAST`), when the display has 256 colours or fewer, when the saver's registry key holds a `PlainDialog` value of 1, or when the Afterglow dialog cannot be created or set up (the template fails, or the banner or preview pane has no size).
+The plain dialog is shown instead of the Afterglow one when high contrast is on (`SPI_GETHIGHCONTRAST`), when the display has 256 colours or fewer, when the screen is too small for it (the dialog is 564 by about 560 pixels, so 800 by 600 gets the plain one), when the saver's registry key holds a `PlainDialog` value of 1, or when the Afterglow dialog cannot be created or set up (the template fails, or the banner or preview pane has no size).
 
 ## 10. Quill Ghostwriter
 

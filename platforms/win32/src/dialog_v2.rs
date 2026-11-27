@@ -710,7 +710,7 @@ unsafe extern "system" fn dialog_proc(dialog: Handle, message: u32, wparam: usiz
 }
 
 /// Whether the Afterglow dialog should be offered at all: not under high contrast, and not on a display of 256 colours or fewer,
-/// where its colours would be dithered; and not when the saver's key asks for the plain one (`PlainDialog` set to 1).
+/// where its colours would be dithered; not on a screen too small for it; and not when the saver's key asks for the plain one (`PlainDialog` set to 1).
 pub fn wanted(kind: SaverKind) -> bool {
 	if RegStore::open(kind).get_dword("PlainDialog") == Some(1) {
 		return false;
@@ -743,7 +743,23 @@ pub fn wanted(kind: SaverKind) -> bool {
 		sys::ReleaseDC(sys::NULL, dc);
 		depth
 	};
-	depth > 8
+	if depth <= 8 {
+		return false;
+	}
+	// The dialog must fit the screen with a taskbar's room to spare, whatever the font size; a smaller screen gets the plain dialog,
+	// which is shorter.
+	let (width, height) = template_v2::size(kind);
+	// SAFETY: plain metric queries.
+	let (screen_width, screen_height, chrome) = unsafe {
+		(
+			sys::GetSystemMetrics(sys::SM_CXSCREEN),
+			sys::GetSystemMetrics(sys::SM_CYSCREEN),
+			sys::GetSystemMetrics(sys::SM_CYCAPTION) + 2 * sys::GetSystemMetrics(sys::SM_CYDLGFRAME),
+		)
+	};
+	let needed_height = (i32::from(height) * 13 / 8 + chrome) * 11 / 10;
+	let needed_width = i32::from(width) * 3 / 2 * 11 / 10;
+	needed_height + 32 <= screen_height && needed_width <= screen_width
 }
 
 /// Runs the Afterglow dialog to its end. Returns false when it could not be made, so that the caller shows the plain one.

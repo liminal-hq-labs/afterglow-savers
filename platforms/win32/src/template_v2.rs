@@ -23,14 +23,14 @@ pub const NEW_SEED_ID: u16 = 101;
 /// The owner-drawn group titles: `HEADER_BASE` for Look, then Quality, Finish and Scene.
 pub const HEADER_BASE: u16 = 910;
 pub const HEADERS: [&str; 4] = ["Look", "Quality", "Finish", "Scene"];
-/// The banner's height, in dialog units (about 70 pixels), and the preview pane's.
-pub const BANNER_HEIGHT: i16 = 44;
-const PREVIEW_HEIGHT: i16 = 96;
+/// The banner's height, in dialog units (about 64 pixels), and the preview pane's.
+pub const BANNER_HEIGHT: i16 = 40;
+const PREVIEW_HEIGHT: i16 = 84;
 /// A group title's height and a palette swatch's.
 const HEADER_HEIGHT: i16 = 12;
 const SWATCH_HEIGHT: i16 = 30;
 const SWATCH_GAP: i16 = 2;
-const TEXT_HEIGHT: i16 = 32;
+const TEXT_HEIGHT: i16 = 26;
 const SS_OWNERDRAW: u32 = 0x0D;
 const BS_OWNERDRAW: u32 = 0x0B;
 
@@ -84,6 +84,15 @@ fn put_scene(b: &mut Builder, scene: &[(usize, Field)], text: Option<(&str, &str
 		y += ROW + TEXT_HEIGHT;
 	}
 	y
+}
+
+/// The dialog's size in dialog units: (width, height).
+pub fn size(kind: SaverKind) -> (i16, i16) {
+	let t = build(kind);
+	(
+		i16::from_le_bytes([t.bytes[14], t.bytes[15]]),
+		i16::from_le_bytes([t.bytes[16], t.bytes[17]]),
+	)
 }
 
 /// Builds the Afterglow settings dialog of a saver.
@@ -303,13 +312,14 @@ mod tests {
 	}
 
 	#[test]
-	fn the_dialog_fits_an_800_by_600_screen() {
+	fn the_dialog_fits_a_1024_by_768_screen() {
 		for kind in SaverKind::ALL {
 			let t = build(kind);
 			let width = i16::from_le_bytes([t.bytes[14], t.bytes[15]]);
 			let height = height_of(&t.bytes);
 			assert!(i32::from(width) * 3 / 2 <= 580, "{kind:?} is {width} wide");
-			assert!(i32::from(height) * 8 / 5 <= 560, "{kind:?} is {height} tall");
+			// The Afterglow dialog is for screens of 1024 by 768 and up; a smaller one gets the plain dialog (`dialog_v2::wanted`).
+			assert!(i32::from(height) * 8 / 5 <= 680, "{kind:?} is {height} tall");
 		}
 	}
 }
