@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	The maze icon, 48 px master.
+
+	(c) Copyright 2026 Liminal HQ, Scott Morris
+	SPDX-License-Identifier: Apache-2.0 OR MIT
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+	<defs>
+		<filter id="maze-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1"/></filter>
+		<clipPath id="maze-c1"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="maze-g1f25547a4562" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f2554"/><stop offset="1" stop-color="#7a4562"/></linearGradient>
+		<clipPath id="maze-c2"><path d="M13 5.75 H35 a7.25 7.25 0 0 1 7.25 7.25 V35 a7.25 7.25 0 0 1 -7.25 7.25 H13 a7.25 7.25 0 0 1 -7.25 -7.25 V13 a7.25 7.25 0 0 1 7.25 -7.25 Z" clip-rule="evenodd"/></clipPath>
+		<clipPath id="maze-c3"><path d="M5 5 L43 5 L29.5 18.5 L18.5 18.5 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="maze-g423762362e51" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#423762"/><stop offset="1" stop-color="#362e51"/></linearGradient>
+		<clipPath id="maze-c4"><path d="M5 5 L18.5 18.5 L18.5 29.5 L5 43 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="maze-g5b4c884e4175" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b4c88"/><stop offset="1" stop-color="#4e4175"/></linearGradient>
+		<clipPath id="maze-c5"><path d="M43 5 L29.5 18.5 L29.5 29.5 L43 43 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="maze-g937adb856fc6" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#937adb"/><stop offset="1" stop-color="#856fc6"/></linearGradient>
+		<clipPath id="maze-c6"><path d="M5 43 L18.5 29.5 L29.5 29.5 L43 43 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="maze-g6d6b86585671" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d6b86"/><stop offset="1" stop-color="#585671"/></linearGradient>
+	</defs>
+	<ellipse cx="25" cy="43.4" rx="16" ry="1.5" fill="#0a1230" opacity="0.3" filter="url(#maze-blur)"/>
+	<path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="#4a4580"/><g clip-path="url(#maze-c1)"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="url(#maze-g1f25547a4562)" transform="translate(1 1)"/></g>
+	<g clip-path="url(#maze-c1)"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="none" stroke="#655fa8" stroke-width="1.5"/></g>
+	<g clip-path="url(#maze-c2)">
+	<path d="M5 5 L43 5 L29.5 18.5 L18.5 18.5 Z" fill="url(#maze-g423762362e51)" fill-rule="evenodd"/>
+	<path d="M5 5 L18.5 18.5 L18.5 29.5 L5 43 Z" fill="#6d5ba3" fill-rule="evenodd"/><g clip-path="url(#maze-c4)"><path d="M5 5 L18.5 18.5 L18.5 29.5 L5 43 Z" fill="url(#maze-g5b4c884e4175)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<path d="M43 5 L29.5 18.5 L29.5 29.5 L43 43 Z" fill="#a78bfa" fill-rule="evenodd"/><g clip-path="url(#maze-c5)"><path d="M43 5 L29.5 18.5 L29.5 29.5 L43 43 Z" fill="url(#maze-g937adb856fc6)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<path d="M5 43 L18.5 29.5 L29.5 29.5 L43 43 Z" fill="#8f8da6" fill-rule="evenodd"/><g clip-path="url(#maze-c6)"><path d="M5 43 L18.5 29.5 L29.5 29.5 L43 43 Z" fill="url(#maze-g6d6b86585671)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<path d="M5 43 L18.5 29.5 M43 43 L29.5 29.5 M5 5 L18.5 18.5 M43 5 L29.5 18.5" fill="none" stroke="#3a3157" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+	<path d="M9 20 L13 24 L13 28 L9 25 Z" fill="#8a73ce" fill-rule="evenodd"/>
+	<path d="M18.5 29.5 V18.5 H29.5 V29.5 Z" fill="#574136" fill-rule="evenodd"/>
+	<path d="M19.5 29.5 V23 H22 V20.5 H26 V23 H28.5 V29.5 Z" fill="#ffaa40" fill-rule="evenodd"/>
+	<path d="M21 29.5 V25.5 H23 V22.5 H25 V25.5 H27 V29.5 Z" fill="#ffd08e" fill-rule="evenodd"/>
+	<path d="M22.8 29.5 V26.5 H25.2 V29.5 Z" fill="#ffe7c4" fill-rule="evenodd"/>
+	</g>
+</svg>

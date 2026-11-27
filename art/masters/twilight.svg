@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	The twilight icon, 48 px master.
+
+	(c) Copyright 2026 Liminal HQ, Scott Morris
+	SPDX-License-Identifier: Apache-2.0 OR MIT
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+	<defs>
+		<filter id="twilight-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1"/></filter>
+		<clipPath id="twilight-c1"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="twilight-g1f25547a4562" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f2554"/><stop offset="1" stop-color="#7a4562"/></linearGradient>
+		<clipPath id="twilight-c2"><path d="M13 5.75 H35 a7.25 7.25 0 0 1 7.25 7.25 V35 a7.25 7.25 0 0 1 -7.25 7.25 H13 a7.25 7.25 0 0 1 -7.25 -7.25 V13 a7.25 7.25 0 0 1 7.25 -7.25 Z" clip-rule="evenodd"/></clipPath>
+		<clipPath id="twilight-c3"><path d="M10.5 26 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="twilight-g423762362e51" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#423762"/><stop offset="1" stop-color="#362e51"/></linearGradient>
+		<clipPath id="twilight-c4"><path d="M32.2 14.5 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="twilight-gffeed6ffe3ba" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeed6"/><stop offset="1" stop-color="#ffe3ba"/></linearGradient>
+	</defs>
+	<ellipse cx="25" cy="43.4" rx="16" ry="1.5" fill="#0a1230" opacity="0.3" filter="url(#twilight-blur)"/>
+	<path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="#4a4580"/><g clip-path="url(#twilight-c1)"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="url(#twilight-g1f25547a4562)" transform="translate(1 1)"/></g>
+	<g clip-path="url(#twilight-c1)"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="none" stroke="#655fa8" stroke-width="1.5"/></g>
+	<g clip-path="url(#twilight-c2)">
+	<path d="M34.7 11.5 a0.8 0.8 0 1 0 1.6 0 a0.8 0.8 0 1 0 -1.6 0 Z M10.3 12.5 a0.7 0.7 0 1 0 1.4 0 a0.7 0.7 0 1 0 -1.4 0 Z M13.9 19 a0.6 0.6 0 1 0 1.2 0 a0.6 0.6 0 1 0 -1.2 0 Z" fill="#e4e2ec" fill-rule="evenodd"/>
+	<ellipse cx="24" cy="40.4" rx="11.18" ry="1.5" fill="#0a1230" opacity="0.3" filter="url(#twilight-blur)"/>
+	<path d="M10.5 26 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0 Z" fill="url(#twilight-g423762362e51)" fill-rule="evenodd"/>
+	<g clip-path="url(#twilight-c3)"><path d="M10.5 26 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0 Z" fill="none" stroke="#1a1727" stroke-width="2" stroke-opacity="0.3"/></g>
+	<g clip-path="url(#twilight-c3)"><path d="M10.5 26 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0 Z" fill="#ffaa40"/><path d="M6 29.5 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0 Z" fill="#3a3157"/></g>
+	<g clip-path="url(#twilight-c3)"><path d="M10.5 26 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0 Z" fill="none" stroke="#ffd096" stroke-width="1.6"/></g>
+	<path d="M32.2 14.5 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z" fill="#ffffff" fill-rule="evenodd"/><g clip-path="url(#twilight-c4)"><path d="M32.2 14.5 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z" fill="url(#twilight-gffeed6ffe3ba)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<g clip-path="url(#twilight-c4)"><path d="M32.2 14.5 a3.8 3.8 0 1 0 7.6 0 a3.8 3.8 0 1 0 -7.6 0 Z" fill="none" stroke="#a56f2b" stroke-width="2" stroke-opacity="0.3"/></g>
+	</g>
+</svg>

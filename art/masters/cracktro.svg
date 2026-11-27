@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	The cracktro icon, 48 px master.
+
+	(c) Copyright 2026 Liminal HQ, Scott Morris
+	SPDX-License-Identifier: Apache-2.0 OR MIT
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+	<defs>
+		<filter id="cracktro-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1"/></filter>
+		<clipPath id="cracktro-c1"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="cracktro-g1f25547a4562" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f2554"/><stop offset="1" stop-color="#7a4562"/></linearGradient>
+		<clipPath id="cracktro-c2"><path d="M13 5.75 H35 a7.25 7.25 0 0 1 7.25 7.25 V35 a7.25 7.25 0 0 1 -7.25 7.25 H13 a7.25 7.25 0 0 1 -7.25 -7.25 V13 a7.25 7.25 0 0 1 7.25 -7.25 Z" clip-rule="evenodd"/></clipPath>
+		<clipPath id="cracktro-c3"><path d="M5.01 13.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V19.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V13.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="cracktro-gf65974ec3d5b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f65974"/><stop offset="1" stop-color="#ec3d5b"/></linearGradient>
+		<clipPath id="cracktro-c4"><path d="M5.01 20.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V26.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V20.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="cracktro-gffb55af7a53e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb55a"/><stop offset="1" stop-color="#f7a53e"/></linearGradient>
+		<clipPath id="cracktro-c5"><path d="M5.01 27.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V33.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V27.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" clip-rule="evenodd"/></clipPath>
+		<linearGradient id="cracktro-gffd79effc980" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd79e"/><stop offset="1" stop-color="#ffc980"/></linearGradient>
+	</defs>
+	<ellipse cx="25" cy="43.4" rx="16" ry="1.5" fill="#0a1230" opacity="0.3" filter="url(#cracktro-blur)"/>
+	<path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="#4a4580"/><g clip-path="url(#cracktro-c1)"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="url(#cracktro-g1f25547a4562)" transform="translate(1 1)"/></g>
+	<g clip-path="url(#cracktro-c1)"><path d="M13 5 H35 a8 8 0 0 1 8 8 V35 a8 8 0 0 1 -8 8 H13 a8 8 0 0 1 -8 -8 V13 a8 8 0 0 1 8 -8 Z" fill="none" stroke="#655fa8" stroke-width="1.5"/></g>
+	<g clip-path="url(#cracktro-c2)">
+	<path d="M5.01 13.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V19.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V13.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" fill="#f995a6" fill-rule="evenodd"/><g clip-path="url(#cracktro-c3)"><path d="M5.01 13.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V19.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V13.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" fill="url(#cracktro-gf65974ec3d5b)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<path d="M5 15.7 H43 V17.3 H5 Z" fill="#f995a6" fill-rule="evenodd"/>
+	<path d="M5.01 20.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V26.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V20.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" fill="#ffd096" fill-rule="evenodd"/><g clip-path="url(#cracktro-c4)"><path d="M5.01 20.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V26.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V20.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" fill="url(#cracktro-gffb55af7a53e)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<path d="M5 22.7 H43 V24.3 H5 Z" fill="#ffd096" fill-rule="evenodd"/>
+	<path d="M5.01 27.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V33.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V27.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" fill="#ffe7c4" fill-rule="evenodd"/><g clip-path="url(#cracktro-c5)"><path d="M5.01 27.5 H42.99 a0.01 0.01 0 0 1 0.01 0.01 V33.49 a0.01 0.01 0 0 1 -0.01 0.01 H5.01 a0.01 0.01 0 0 1 -0.01 -0.01 V27.51 a0.01 0.01 0 0 1 0.01 -0.01 Z" fill="url(#cracktro-gffd79effc980)" fill-rule="evenodd" transform="translate(1 1)"/></g>
+	<path d="M5 29.7 H43 V31.3 H5 Z" fill="#ffe7c4" fill-rule="evenodd"/>
+	<path d="M5 33 C10 22 14 22 19 33 S29 44 34 33 S42 22 46 30" fill="none" stroke="#3a3157" stroke-opacity="0.45" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+	<path d="M5 33 C10 22 14 22 19 33 S29 44 34 33 S42 22 46 30" fill="none" stroke="#ffe7c4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+	</g>
+</svg>
