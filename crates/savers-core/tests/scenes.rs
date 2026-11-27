@@ -15,7 +15,13 @@ use savers_core::scenes::build;
 use savers_core::settings::{Key, SaverKind, Settings};
 
 /// The scenes built so far.
-const SCENES: &[SaverKind] = &[SaverKind::Ink, SaverKind::Twilight, SaverKind::Cracktro];
+const SCENES: &[SaverKind] = &[
+	SaverKind::Ink,
+	SaverKind::Twilight,
+	SaverKind::Cracktro,
+	SaverKind::Maze,
+	SaverKind::Collection,
+];
 
 fn saver(kind: SaverKind, detail: u32, w: usize, h: usize) -> Saver {
 	let mut s = Settings::defaults(kind);

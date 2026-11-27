@@ -34,6 +34,7 @@ options:
   --fps N             simulation steps per second (default 30)
   --out DIR           where frames go (default previews/<scene>)
   --frames N          frames timed per rung in bench (default 60)
+  --pipe              frames: write raw RGB24 frames to standard output instead of PNG files (for ffmpeg -f rawvideo)
 ";
 
 #[derive(Default)]
@@ -69,6 +70,7 @@ struct Opts {
 	fps: f64,
 	out: Option<PathBuf>,
 	frames: usize,
+	pipe: bool,
 }
 
 fn parse() -> Result<Opts, String> {
@@ -89,6 +91,7 @@ fn parse() -> Result<Opts, String> {
 		fps: 30.0,
 		out: None,
 		frames: 60,
+		pipe: false,
 	};
 	while let Some(a) = args.next() {
 		let mut val = || args.next().ok_or(format!("{a} needs a value"));
@@ -120,6 +123,7 @@ fn parse() -> Result<Opts, String> {
 			"--fps" => o.fps = val()?.parse().map_err(|_| "bad --fps")?,
 			"--out" => o.out = Some(PathBuf::from(val()?)),
 			"--frames" => o.frames = val()?.parse().map_err(|_| "bad --frames")?,
+			"--pipe" => o.pipe = true,
 			"--help" | "-h" => return Err(String::new()),
 			_ => return Err(format!("unknown option {a}")),
 		}
@@ -144,7 +148,12 @@ fn frames(o: &Opts) -> Result<(), String> {
 		.out
 		.clone()
 		.unwrap_or_else(|| Path::new("previews").join(o.kind.registry_name().to_lowercase()));
-	std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+	if !o.pipe {
+		std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+	}
+	let stdout = std::io::stdout();
+	let mut pipe = std::io::BufWriter::with_capacity(1 << 20, stdout.lock());
+	let mut rgb = Vec::new();
 	let mut saver = make(o.kind, &settings, o.seed, o.size);
 	let dt = 1.0 / o.fps;
 	let mut t = 0.0f64;
@@ -154,8 +163,16 @@ fn frames(o: &Opts) -> Result<(), String> {
 	while t <= o.to + 1e-9 {
 		let frame = saver.at(t);
 		if t + 1e-9 >= next {
-			let path = out.join(format!("frame-{n:05}.png"));
-			png::write(&path, frame.w, frame.h, &frame.px).map_err(|e| format!("{}: {e}", path.display()))?;
+			if o.pipe {
+				rgb.clear();
+				for &c in &frame.px {
+					rgb.extend_from_slice(&[(c >> 16) as u8, (c >> 8) as u8, c as u8]);
+				}
+				pipe.write_all(&rgb).map_err(|e| format!("standard output: {e}"))?;
+			} else {
+				let path = out.join(format!("frame-{n:05}.png"));
+				png::write(&path, frame.w, frame.h, &frame.px).map_err(|e| format!("{}: {e}", path.display()))?;
+			}
 			n += 1;
 			next += o.step;
 		}

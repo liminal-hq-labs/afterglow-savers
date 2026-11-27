@@ -379,6 +379,20 @@ impl Settings {
 		}
 	}
 
+	/// Takes the common settings (look, quality, finish) from another saver's settings, keeping this one's seed and scene
+	/// settings, as the Collection does for each scene it plays (SAV-D8).
+	pub fn adopt_common(&mut self, from: &Settings) {
+		for field in COMMON {
+			if field.key != Key::Seed {
+				self.values[field.key as usize] = from.values[field.key as usize];
+			}
+		}
+		// A palette a scene does not offer (Quill's, from Ghostwriter) falls back to the default.
+		if self.get(Key::Palette) > 4 && self.kind != SaverKind::Ghostwriter {
+			self.values[Key::Palette as usize] = 0;
+		}
+	}
+
 	/// The speed as a factor (1.0 is normal).
 	pub fn speed(&self) -> f32 {
 		self.get(Key::Speed) as f32 / 100.0

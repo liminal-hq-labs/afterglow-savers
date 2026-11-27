@@ -117,7 +117,13 @@ impl Twilight {
 		let detail = settings.detail();
 		let pal = palette_for(settings);
 		let mut rng = Rng::new(seed as u64 ^ 0x7E11_6A00_0000);
-		let mw = if detail <= Detail::Low { 256 } else { 512 };
+		// The maps grow with the render width at High and Ultra, so a planet filling a large screen keeps its brush strokes.
+		let mw = match detail {
+			Detail::Low => 256,
+			Detail::Medium => 512,
+			Detail::High => (w / 2).next_power_of_two().clamp(512, 1024),
+			Detail::Ultra => (w * 3 / 4).next_power_of_two().clamp(512, 2048),
+		};
 		let mh = mw / 2;
 		let (ground, lights) = paint_ground(&pal, mw, mh, &mut rng.fork(1));
 		let clouds = paint_clouds(mw, mh, &mut rng.fork(2));
@@ -486,7 +492,7 @@ impl Twilight {
 		let sheen = detail >= Detail::Ultra;
 		let atmos = self.atmos;
 		let city = mixf(self.pal.sun, 0xFFFFFF, 0.2);
-		let cloud_lit = mixf(self.pal.n(100), self.pal.sun, 0.12);
+		let cloud_lit = mixf(self.pal.n(200), self.pal.sun, 0.1);
 		let scale_u = mw as f32 / TAU;
 		for py in y0..y1 {
 			let ny = (py as f32 + 0.5 - pcy) * inv_r;

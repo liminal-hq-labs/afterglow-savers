@@ -95,7 +95,7 @@ Then the cycle repeats. The default message reads, in part: "Afterglow for React
 
 *A walk through dusk architecture: stepped stone and glass under an evening sky, polished floors, soft fog, and a glowing sun window at the end of every long corridor.*
 
-**How it works.** A ray caster in the spirit of the classic 3D Maze, with better materials. A maze is generated from a seed (a recursive backtracker on a grid), and its walls are stone blocks, brick with mortar, inlaid tile bands and glass panes, all generated as textures at startup. The tops of the walls are stepped like crenellations, cut against an open dusk sky with slow clouds and the first stars. The floor is polished stone that mirrors the walls (the wall column mirrored about its base, darkened and blended with the floor texture) or still water that ripples the reflection. Distance fog tints everything towards the sky's horizon colour. Sun windows, discs of stepped stained glass, glow at the ends of corridors and throw light shafts (a radial blur of the bright parts, from the window's centre on screen).
+**How it works.** A ray caster in the spirit of the classic 3D Maze, with better materials. A maze is generated from a seed (a recursive backtracker on a grid that carries straight on two times in three, for long corridors with a view down them), and its walls are stone blocks, brick with mortar, inlaid tile bands and glass panes, all generated as textures at startup. The tops of the walls are stepped like crenellations, cut against an open dusk sky with slow clouds and the first stars. The floor is polished stone that mirrors the walls (the wall column mirrored about its base, darkened and blended with the floor texture) or still water that ripples the reflection. Distance fog tints everything towards the sky's horizon colour. Sun windows, discs of stepped stained glass, glow at the ends of corridors and throw light shafts (a radial blur of the bright parts, from the window's centre on screen).
 
 **Second by second** (each maze takes one to three minutes to walk, then fades to a new one):
 
@@ -109,13 +109,13 @@ Then the cycle repeats. The default message reads, in part: "Afterglow for React
 
 **Settings.** Floor (polished stone, water or tiles), corridor style seed (0 means new each run), maze size.
 
-**Ladder.** Low: no reflections (a plain floor with fog), no light shafts, 64-texel textures. Medium: reflections without ripple, 128-texel textures. High: light shafts and corner shading. Ultra: water ripples or a sharper reflection, and sky clouds.
+**Ladder.** Low: 64-texel textures and a plain floor with fog. Medium: 128-texel textures and the mirrored walls in the floor. High: light shafts from the brightest window on screen. Ultra: every floor ripples a little (water always does).
 
 ## Collection
 
 *All four in turn.*
 
-Afterglow Collection runs the four savers one after another, each for its duration (90 seconds by default), with a two-second cross-fade between them (both scenes are drawn during the fade). The order is Ink, Twilight, Cracktro, Maze, or shuffled; any saver can be left out. It uses its own render settings and each saver's own scene settings.
+Afterglow Collection runs the four savers one after another, each for its duration (90 seconds by default), with a two-second cross-fade between them (both scenes are drawn during the fade). Each scene starts 2.5 seconds into its own storyboard, so its fade-up is over before it appears, and the next scene is made five seconds before its fade, so its start-up does not fall in the fade. The order is Ink, Twilight, Cracktro, Maze, or shuffled; any saver can be left out. It uses its own render settings and each saver's own scene settings.
 
 ## Quill Ghostwriter (an Easter egg)
 
