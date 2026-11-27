@@ -31,6 +31,9 @@ const MOUSE_THRESHOLD: i32 = 10;
 /// The preview's frame cap and the size it falls back to when its parent has no size yet.
 const PREVIEW_FPS: u32 = 20;
 const PREVIEW_FALLBACK: (i32, i32) = (152, 112);
+/// The smallest window, in pixels, that gets worker threads: below a million the passes are too short to repay waking them.
+#[cfg(target_arch = "x86_64")]
+const THREADS_FROM_PIXELS: i64 = 1_000_000;
 
 /// What the window procedure needs; the frame loop owns the rest.
 struct Shared {
@@ -287,6 +290,16 @@ fn run_window(kind: SaverKind, make: MakeScene, score: MakeScore, parent: Option
 	.max(1);
 	let sound_settings = settings.clone();
 	let mut saver = Saver::new(settings, scene, width as usize, height as usize, preview);
+	// The x86-64 build shares a frame's passes between processors in a full-screen run big enough to need it (SAV-D51); the Pentium
+	// build, the preview and the dialog stay on one thread.
+	#[cfg(target_arch = "x86_64")]
+	if !preview && width as i64 * height as i64 >= THREADS_FROM_PIXELS {
+		use savers_core::settings::SettingsStore;
+		let wanted = crate::pool::wanted(RegStore::open(kind).get_dword("Threads"));
+		if let Some(bands) = crate::pool::start(wanted) {
+			saver.set_bands(bands);
+		}
+	}
 
 	let shared = Shared {
 		preview,

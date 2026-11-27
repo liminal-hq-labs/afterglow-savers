@@ -354,6 +354,14 @@ for size in "${sizes[@]}"; do
 			[ "$status" = 0 ] || fail "$upper /p ($arch) host exit code $status (2 gone early, 3 did not end with its parent)"
 			echo "ok $upper /p $arch $size: drew in the parent and ended with it"
 		done
+		# The x86-64 worker pool (SAV-D51): every scene rendered with one thread and with eight gives the same frames, through the real
+		# pool, its events and its threads (the full-screen runs above are below the pool's size threshold).
+		if [ "$arch" = x86_64 ] && [ -f "$dir/bandcheck.exe" ]; then
+			code=0
+			timeout 600 wine "$(wine_path "$dir/bandcheck.exe")" >/dev/null 2>&1 || code=$?
+			[ "$code" = 0 ] || fail "bandcheck ($arch): exit code $code (2 no pool, 10 and up the scene whose frames differed)"
+			echo "ok bandcheck $arch: every scene is the same byte for byte with one thread and with eight"
+		fi
 	done
 	stop_display
 done

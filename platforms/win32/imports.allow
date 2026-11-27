@@ -23,18 +23,24 @@ gdi32.dll!SetBkMode
 gdi32.dll!SetStretchBltMode
 gdi32.dll!SetTextColor
 gdi32.dll!StretchDIBits
+kernel32.dll!CreateEventA 64
+kernel32.dll!CreateThread 64
 kernel32.dll!ExitProcess
 kernel32.dll!GetCommandLineA
 kernel32.dll!GetFileAttributesA collection
 kernel32.dll!GetModuleFileNameA collection
 kernel32.dll!GetModuleHandleA
 kernel32.dll!GetProcessHeap
+kernel32.dll!GetSystemInfo 64
 kernel32.dll!GetTickCount
 kernel32.dll!HeapAlloc
 kernel32.dll!HeapFree
 kernel32.dll!HeapReAlloc
 kernel32.dll!QueryPerformanceCounter
 kernel32.dll!QueryPerformanceFrequency
+kernel32.dll!SetEvent 64
+kernel32.dll!SetThreadPriority 64
+kernel32.dll!WaitForSingleObject 64
 user32.dll!BeginPaint
 user32.dll!CallWindowProcA
 user32.dll!CreateWindowExA
@@ -71,12 +77,12 @@ user32.dll!RegisterClassA
 user32.dll!ReleaseDC
 user32.dll!SendMessageA
 user32.dll!SetCursor
-user32.dll!ShowCursor
 user32.dll!SetDlgItemTextA
 user32.dll!SetFocus
 user32.dll!SetTimer
 user32.dll!SetWindowLongA 32
 user32.dll!SetWindowLongPtrA 64
+user32.dll!ShowCursor
 user32.dll!SystemParametersInfoA
 user32.dll!TranslateMessage
 winmm.dll!waveOutClose

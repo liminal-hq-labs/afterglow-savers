@@ -279,6 +279,46 @@ unsafe extern "system" {
 	pub fn HeapFree(heap: Handle, flags: u32, block: *mut c_void) -> i32;
 }
 
+// Threads (x86-64 only, SAV-D51): the worker pool that shares a frame's passes between processors.
+pub const THREAD_PRIORITY_IDLE: i32 = -15;
+pub const THREAD_PRIORITY_NORMAL: i32 = 0;
+pub const WAIT_OBJECT_0: u32 = 0;
+
+#[repr(C)]
+pub struct SystemInfo {
+	pub processor_architecture: u16,
+	pub reserved: u16,
+	pub page_size: u32,
+	pub minimum_application_address: usize,
+	pub maximum_application_address: usize,
+	pub active_processor_mask: usize,
+	pub number_of_processors: u32,
+	pub processor_type: u32,
+	pub allocation_granularity: u32,
+	pub processor_level: u16,
+	pub processor_revision: u16,
+}
+
+pub type ThreadStart = unsafe extern "system" fn(*mut c_void) -> u32;
+
+#[cfg(target_arch = "x86_64")]
+#[link(name = "kernel32", kind = "raw-dylib")]
+unsafe extern "system" {
+	pub fn GetSystemInfo(info: *mut SystemInfo);
+	pub fn CreateThread(
+		attributes: *const c_void,
+		stack_size: usize,
+		start: ThreadStart,
+		parameter: *mut c_void,
+		flags: u32,
+		thread_id: *mut u32,
+	) -> Handle;
+	pub fn CreateEventA(attributes: *const c_void, manual_reset: i32, initial: i32, name: *const u8) -> Handle;
+	pub fn SetEvent(event: Handle) -> i32;
+	pub fn WaitForSingleObject(object: Handle, milliseconds: u32) -> u32;
+	pub fn SetThreadPriority(thread: Handle, priority: i32) -> i32;
+}
+
 // Wave output (winmm): the saver's sound, queued in three buffers.
 pub const WAVE_MAPPER: u32 = 0xFFFF_FFFF;
 pub const WAVE_FORMAT_PCM: u16 = 1;

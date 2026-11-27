@@ -76,6 +76,12 @@ bench = false
 
 # The test stand-in for the Display applet's preview pane; build.sh does not ship it.
 [[bin]]
+name = "bandcheck"
+path = "src/bin/bandcheck.rs"
+test = false
+bench = false
+
+[[bin]]
 name = "previewhost"
 path = "src/bin/previewhost.rs"
 test = false

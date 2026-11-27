@@ -23,6 +23,8 @@ mod clock;
 mod dialog;
 #[cfg(all(windows, not(test)))]
 mod dialog_v2;
+#[cfg(all(windows, not(test), target_arch = "x86_64"))]
+pub mod pool;
 #[cfg(all(windows, not(test)))]
 mod registry;
 #[cfg(all(windows, not(test)))]

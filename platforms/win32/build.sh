@@ -53,5 +53,7 @@ build)
 	echo "build: $arch total $total bytes (AGQUILL.SCR is outside the five-file budget)"
 	# The preview stand-in the Wine smoke test uses; it is not one of the five and is not checked against the budgets.
 	cp "${CARGO_TARGET_DIR:-$here/target}/$target/release/previewhost.exe" "$out/previewhost.exe"
+	# The worker pool's test program, run by the Wine smoke test (the Pentium build has no pool and answers 2).
+	cp "${CARGO_TARGET_DIR:-$here/target}/$target/release/bandcheck.exe" "$out/bandcheck.exe"
 	;;
 esac
