@@ -17,27 +17,18 @@ Builder queue (the orchestrator's order): WP-art, WP-gpu-share, WP-win16, then t
 
 ## Measurements
 
-**Ink** (`savers-preview bench`, host reference loop 0.66 ms, a Pentium III estimated 11.3 times slower):
+`savers-preview bench` at 800 × 600, frames a second apart across each storyboard; the host's reference loop takes about 0.6 ms, and a Pentium III 800 MHz is estimated 11 to 12 times slower (`savers_core::bench`). Start-up is the scene's painting at the start.
 
-| Window | Rung | Host ms | Host fps | P3 est. fps |
+| Saver | 25% Low: host ms, P3 est. fps | 50% Medium: host ms, P3 est. fps | 100% Ultra: host ms, host fps | Start ms (Low / Ultra) |
 | --- | --- | --- | --- | --- |
-| 800 × 600 | 25% Low | 3.8 | 263 | 23 |
-| 800 × 600 | 100% Ultra | 24.5 | 41 | 3.6 |
-| 1280 × 720 | 25% Low | 3.3 | 304 | 25 |
-| 1280 × 720 | 100% Ultra | 36 to 39 | 26 to 28 | 2.3 |
+| Ink | 3.7, 23 | 11.0, 7.7 | 24.7, 41 | 50 / 207 |
+| Twilight | 2.9, 28 | 6.7, 12 | 14.0, 71 | 49 / 531 (maps grow with the width) |
+| Cracktro | 2.3, 37 | 4.2, 20 | 4.6, 218 | 7 / 38 |
+| Maze | 2.5, 34 | 4.9, 17 | 9.7, 104 | 9 / 34 |
+| Quill Ghostwriter | 2.4, 37 | 5.0, 18 | 8.5, 117 | 1 / 11 |
+| Collection | 3.8, 22 | 11.5, 7 | 24.3, 41 | 51 / 207 |
 
-The 25% Low floor holds. 100% Ultra misses 30 fps at 1280 × 720 on one host core; the output pass (enlargement, vignette and grain at the full size) and the two-layer advection dominate. Rendering bands on several threads in the x86_64 build is the planned fix.
-
-**Twilight** and **Ink** at 800 × 600, frames sampled a second apart across the storyboard (host reference loop about 0.62 ms; a Pentium III estimated about 12 times slower):
-
-| Scene | Rung | Start ms | Host ms | Host fps | P3 est. fps |
-| --- | --- | --- | --- | --- | --- |
-| Twilight | 25% Low | 51 | 3.2 | 313 | 26 |
-| Twilight | 100% Ultra | 212 | 15.3 | 65 | 5 |
-| Ink | 25% Low | 53 | 3.8 | 266 | 22 |
-| Ink | 100% Ultra | 203 | 21.7 | 46 | 4 |
-
-Ink paints its second sheet a few rows a frame while it is invisible, which halves its start-up.
+The 25% Low floor (15 fps on a Pentium III) holds with room for every saver. 100% Ultra on one host core: 41 to 218 fps at 800 × 600; at 1280 × 720 Ink drops to about 27 fps, so rendering bands on several threads in the x86_64 build remains a later improvement. The Twilight 4K video took 752 s for 2,701 frames (0.28 s a frame at 3840 × 2160, Ultra).
 
 ## Open questions for the owner
 
