@@ -89,7 +89,7 @@ Then the cycle repeats. The default message reads, in part: "Afterglow for React
 
 **Settings.** Scroller text, which parts play and whether in order or shuffled, scroller speed (the speed slider).
 
-**Ladder.** The stage is already small. Low: a 240-wide stage, no sprite shadows, a plain scroller. Medium: 320-wide. High: 400-wide and a reflected scroller in a "water" strip at the bottom. Ultra: 480-wide with sub-pixel scroller smoothing.
+**Ladder.** The stage is drawn small and enlarged with hard pixel edges: 240 pixels wide at Low, 320 at Medium, 400 at High (which adds the scroller's reflection in a strip of water), 480 at Ultra. It is the cheapest scene: 2 to 4 ms a frame on the development host at any rung.
 
 ## Maze
 

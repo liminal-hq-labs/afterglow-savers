@@ -14,6 +14,7 @@ extern crate alloc;
 
 pub mod bench;
 pub mod colour;
+pub mod font;
 pub mod frame;
 pub mod math;
 pub mod noise;
