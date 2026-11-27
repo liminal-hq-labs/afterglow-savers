@@ -14,7 +14,10 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-prefix="${HOME}/.cache/afterglow-savers/wine"
+# A prefix of this run's own: two runs sharing one (another agent's, or another worktree's) share a wineserver, and a program can
+# then open its window on the other run's display.
+mkdir -p "${HOME}/.cache/afterglow-savers"
+prefix="$(mktemp -d "${HOME}/.cache/afterglow-savers/wine.XXXXXX")"
 shots=""
 sizes=()
 savers=()
@@ -74,7 +77,11 @@ stop_display() {
 		xvfb_pid=""
 	fi
 }
-trap stop_display EXIT
+finish() {
+	stop_display
+	rm -rf "$prefix"
+}
+trap finish EXIT
 
 fail() { echo "FAIL smoke-wine: $*" >&2; exit 1; }
 
