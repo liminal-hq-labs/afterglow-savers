@@ -5,13 +5,15 @@ The resumable log of where the work stands. Newest state first; each phase lists
 ## Phases
 
 - **P0** repository, research notes (`docs/reactos-scr.md`), storyboard (`docs/scenes.md`). Done.
-- **P1** the engine core: maths, noise, colour and palettes, frame buffer, finishing (bloom, streaks, vignette, grain, letterbox, fades, scaling), settings, the host preview tool and tests.
-- **P2** the scenes, in order of risk: Ink, Twilight, Cracktro, Maze, each with its quality ladder measured, preview GIFs and a contact sheet. Done for all four and the Collection; previews in `~/Documents/Liminal HQ/Afterglow Savers/previews`.
-- **P3** the Win32 `.scr` shells (`/s /p /c`, registry, dialog, exit rules, Collection), reproducible i586 and x86_64 builds, icons, Wine, then the real ReactOS guest.
-- **P4** the ReactOS integration plan (`docs/reactos-integration.md`).
-- **P7** The Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after the plain dialogs: three work packages.
-- **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): three work packages, for builders.
-- **P5** Quill Ghostwriter (Win32, SAV-D20 to SAV-D22), then its Windows 3.x edition `QUILLGW.SCR` (SAV-D23), and `docs/quill-installer-integration.md` (SAV-D24).
+- **P1** the engine core and the host preview tool. Done.
+- **P2** the scenes: Ink, Twilight (with its sun, SAV-D27), Cracktro, Maze, the Collection, and Quill Ghostwriter's scene. Done; previews in `~/Documents/Liminal HQ/Afterglow Savers/previews`, a 4K Twilight video too.
+- **P3** the Win32 `.scr` shells: a Sonnet builder has WP-win32 in `~/source/worktrees/afterglow-savers/win32` (branch `wp/win32`). When it lands: `scripts/guest/guest.py --scr <dist>` runs every saver in a copy of the Afterglow ReactOS image and takes screendumps.
+- **P4** the ReactOS integration plan: done (`docs/reactos-integration.md`); the Quill installer plan too (`docs/quill-installer-integration.md`).
+- **P5** Quill Ghostwriter: the scene is done; its `.scr` comes with WP-win32; the Windows 3.x edition `QUILLGW.SCR` (SAV-D23) is WP-win16, queued for a builder.
+- **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): three work packages, queued for builders.
+- **P7** the Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after WP-win32: three work packages.
+
+Builder queue (the orchestrator's order): WP-art, WP-gpu-share, WP-win16, then the dialog v2 packages.
 
 ## Measurements
 
