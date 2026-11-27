@@ -5,11 +5,11 @@
 
 export CARGO_BUILD_JOBS ?= 4
 
-.PHONY: check check-fast check-gpu headers fmt clippy test deny preview win16 win32 win32-fmt win32-clippy win32-test win32-build repro smoke
+.PHONY: check check-fast check-gpu headers fmt clippy test deny preview win16 win32 win32-fmt win32-clippy win32-test win32-build build-scr check-archive repro smoke
 
 # `check` is the whole gate: the host checks, the Win32 build and its structure, import, Pentium and size checks, the byte-identical
 # rebuild in three directories, and the Wine run (which says SKIP when Wine or Xvfb is missing).
-check: check-fast deny win32 win16 repro smoke
+check: check-fast deny win32 win16 check-archive repro smoke
 
 check-fast: headers fmt clippy test
 
@@ -62,6 +62,14 @@ win32-build:
 	bash platforms/win32/build.sh x86_64
 	bash platforms/win32/check.sh i586
 	bash platforms/win32/check.sh x86_64
+
+# The six i586 files and SHA256SUMS in `dist/scr-i586`, as reactos-liminal and Quill build them (`scripts/build-scr.sh`).
+build-scr:
+	bash scripts/build-scr.sh dist/scr-i586
+
+# A `git archive` of HEAD, built like the GitHub source tar, must match the working tree's files.
+check-archive:
+	bash scripts/check-archive-build.sh
 
 repro:
 	bash scripts/repro-win32.sh
