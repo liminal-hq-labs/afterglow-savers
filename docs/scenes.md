@@ -48,7 +48,7 @@ Two settings set the cost, and both are in every saver's settings:
 
 **Settings.** Ink thickness (how wide each ink band is against the dark water), turbulence (vortex strength and count), seed (0 means a new one each run).
 
-**Ladder.** Low: one layer and nearest-texel sheet reads, flow on a 16-pixel grid. Medium: two layers, bilinear sheet. High: adds the light sweep and the curtain rays. Ultra: a finer 8-pixel flow grid and a sharpening pass that keeps the filaments crisp.
+**Ladder.** Low: a 256-texel sheet read nearest, bloom at an eighth of the size, no curtains. Medium: a 512-texel sheet read bilinear, and the aurora curtains (light carried up each column from bright, saturated ink as a decaying maximum). High: adds the light sweep and the wet-ink relief (each pixel lit by how much brighter it is than its upper-left neighbour). Ultra: a finer 8-pixel flow grid.
 
 ## Twilight
 

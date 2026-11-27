@@ -476,64 +476,105 @@ impl Ink {
 			for (x, ray) in self.rays.iter_mut().enumerate() {
 				let n = noise2(x as f32 * 40.0 / w, t * 0.3, self.seed) * 0.6
 					+ noise2(x as f32 * 11.0 / w, t * 0.1, self.seed + 1) * 0.4;
-				*ray = (256.0 + a * 150.0 * n) as u32;
+				*ray = (256.0 + 220.0 * n) as u32;
 			}
 		}
 	}
 
-	/// Moves one layer's map along the flow by `dt` seconds.
-	fn advect(&mut self, which: usize, dt: f32) {
+	/// The aurora: light carried upwards from every bright band, column by column, fading with height, each column at its own
+	/// shimmering rate, so lit ink throws tall rays like the curtains of an aurora.
+	fn curtains(&self, out: &mut Frame) {
+		let (w, h) = (out.w, out.h);
+		let a = self.aurora;
+		// Rays reach about a third of the height at their longest.
+		let base = 1.0 - 3.5 / h as f32;
+		// The ink dims a little under the curtains, so they glow against it.
+		let dim = (256.0 - 90.0 * a) as u32;
+		for x in 0..w {
+			let shimmer = self.rays[x] as f32 / 256.0;
+			let keep = (256.0 * (base + (1.0 - base) * 0.5 * (shimmer - 1.0))).clamp(0.0, 255.0) as u32;
+			let gain = (a * 150.0 * shimmer) as u32;
+			let mut acc = 0u32;
+			for y in (0..h).rev() {
+				let i = y * w + x;
+				let c = out.px[i];
+				// The rays are fed from the pixel blended with its right-hand neighbour (not yet lit, since columns go left to
+				// right), so one bright pixel does not draw a scratch. Only bright, saturated ink feeds them; pale veins and the
+				// water do not.
+				let soft = mix(c, out.px[i + (x + 1 < w) as usize], 110);
+				let (r, g, b) = (colour::r(soft), colour::g(soft), colour::b(soft));
+				let chroma = r.max(g).max(b) - r.min(g).min(b);
+				let feed = if chroma > 70 && colour::luma(soft) > 60 {
+					scale(soft, gain.min(256))
+				} else {
+					0
+				};
+				// A decaying maximum, not a sum, so a tall band does not pile up into white.
+				let kept = scale(acc, keep);
+				acc = if colour::luma(feed) > colour::luma(kept) { feed } else { kept };
+				out.px[i] = colour::screen(scale(c, dim), acc);
+			}
+		}
+	}
+
+	/// Moves both layers' maps along the flow by `dt` seconds. The grid velocities are first scaled by `dt` into 16.16 pixel
+	/// displacements, so the per-pixel work is 32-bit adds, shifts and small multiplies, which a Pentium does quickly.
+	fn advect(&mut self, dt: f32) {
 		let (w, h) = (self.w, self.h);
 		let gs = self.grid as i32;
-		let layer = &mut self.layers[which];
-		let dt16 = (dt * 65_536.0) as i64;
-		let maxx = ((w as i32 - 1) << 16) as i64;
-		let maxy = ((h as i32 - 1) << 16) as i64;
+		for (vx, vy) in self.vx.iter_mut().zip(self.vy.iter_mut()) {
+			*vx = (*vx as f32 * dt) as i32;
+			*vy = (*vy as f32 * dt) as i32;
+		}
+		let maxx = (w as i32 - 1) << 16;
+		let maxy = (h as i32 - 1) << 16;
+		let [la, lb] = &mut self.layers;
 		for y in 0..h {
-			let gy = y as i32 / gs;
-			let ty = (((y as i32 % gs) << 8) / gs) as i64;
+			let gy = y / gs as usize;
+			let ty = ((y as i32 % gs) << 8) / gs;
 			for gx in 0..self.gw {
-				let a = self.vx[gy as usize * self.gw + gx] as i64;
-				let b = self.vx[(gy as usize + 1) * self.gw + gx] as i64;
-				self.rowx[gx] = (a + ((b - a) * ty >> 8)) as i32;
-				let a = self.vy[gy as usize * self.gw + gx] as i64;
-				let b = self.vy[(gy as usize + 1) * self.gw + gx] as i64;
-				self.rowy[gx] = (a + ((b - a) * ty >> 8)) as i32;
+				let (i0, i1) = (gy * self.gw + gx, (gy + 1) * self.gw + gx);
+				self.rowx[gx] = self.vx[i0] + ((self.vx[i1] - self.vx[i0]) * ty >> 8);
+				self.rowy[gx] = self.vy[i0] + ((self.vy[i1] - self.vy[i0]) * ty >> 8);
 			}
 			for x in 0..w {
 				let gx = x / gs as usize;
-				let tx = (((x as i32 % gs) << 8) / gs) as i64;
-				let vx = self.rowx[gx] as i64 + ((self.rowx[gx + 1] as i64 - self.rowx[gx] as i64) * tx >> 8);
-				let vy = self.rowy[gx] as i64 + ((self.rowy[gx + 1] as i64 - self.rowy[gx] as i64) * tx >> 8);
-				let sx = ((x as i64) << 16) - (vx * dt16 >> 16);
-				let sy = ((y as i64) << 16) - (vy * dt16 >> 16);
+				let tx = ((x as i32 % gs) << 8) / gs;
+				let dx = self.rowx[gx] + ((self.rowx[gx + 1] - self.rowx[gx]) * tx >> 8);
+				let dy = self.rowy[gx] + ((self.rowy[gx + 1] - self.rowy[gx]) * tx >> 8);
+				let sx = ((x as i32) << 16) - dx;
+				let sy = ((y as i32) << 16) - dy;
 				let i = y * w + x;
 				if sx < 0 || sy < 0 || sx > maxx || sy > maxy {
 					// Ink flowing in from beyond the edge is fresh sheet.
-					let (u, v) = layer.fresh_fx(sx as i32, sy as i32);
-					layer.nu[i] = u;
-					layer.nv[i] = v;
+					(la.nu[i], la.nv[i]) = la.fresh_fx(sx, sy);
+					(lb.nu[i], lb.nv[i]) = lb.fresh_fx(sx, sy);
 					continue;
 				}
-				let (sx, sy) = (sx as i32, sy as i32);
 				let x0 = (sx >> 16) as usize;
 				let y0 = (sy >> 16) as usize;
 				let x1 = (x0 + 1).min(w - 1);
 				let y1 = (y0 + 1).min(h - 1);
 				let fx = (sx >> 8) & 0xFF;
 				let fy = (sy >> 8) & 0xFF;
-				let lerp = |a: i32, b: i32, t: i32| a.wrapping_add(((b.wrapping_sub(a) as i64 * t as i64) >> 8) as i32);
+				// Map values wrap (they are positions on a tiling sheet), so differences are taken with wrapping arithmetic and
+				// shifted before the multiply to stay in 32 bits.
+				let lerp = |a: i32, b: i32, t: i32| a.wrapping_add((b.wrapping_sub(a) >> 8).wrapping_mul(t));
 				let (i00, i10, i01, i11) = (y0 * w + x0, y0 * w + x1, y1 * w + x0, y1 * w + x1);
-				let top = lerp(layer.u[i00], layer.u[i10], fx);
-				let bot = lerp(layer.u[i01], layer.u[i11], fx);
-				layer.nu[i] = lerp(top, bot, fy);
-				let top = lerp(layer.v[i00], layer.v[i10], fx);
-				let bot = lerp(layer.v[i01], layer.v[i11], fx);
-				layer.nv[i] = lerp(top, bot, fy);
+				for layer in [&mut *la, &mut *lb] {
+					let top = lerp(layer.u[i00], layer.u[i10], fx);
+					let bot = lerp(layer.u[i01], layer.u[i11], fx);
+					layer.nu[i] = lerp(top, bot, fy);
+					let top = lerp(layer.v[i00], layer.v[i10], fx);
+					let bot = lerp(layer.v[i01], layer.v[i11], fx);
+					layer.nv[i] = lerp(top, bot, fy);
+				}
 			}
 		}
-		core::mem::swap(&mut layer.u, &mut layer.nu);
-		core::mem::swap(&mut layer.v, &mut layer.nv);
+		for layer in [la, lb] {
+			core::mem::swap(&mut layer.u, &mut layer.nu);
+			core::mem::swap(&mut layer.v, &mut layer.nv);
+		}
 	}
 }
 
@@ -558,8 +599,7 @@ impl Scene for Ink {
 		}
 		self.flow(t);
 		if cx.dt > 0.0 {
-			self.advect(0, cx.dt);
-			self.advect(1, cx.dt);
+			self.advect(cx.dt);
 		}
 		// Layer weights: a triangle over each layer's two-cycle life, so the two always sum to one.
 		let wa = 1.0 - (fract(phase * 0.5) * 2.0 - 1.0).abs();
@@ -569,7 +609,7 @@ impl Scene for Ink {
 		let sweep_pos = fract(t / CYCLE + 0.3) * 2.6 - 0.8;
 		let (w, h) = (self.w, self.h);
 		let inv = 1.0 / (w + h) as f32;
-		let aurora = self.aurora > 0.01 && cx.detail >= Detail::High;
+		let aurora = self.aurora > 0.01 && cx.detail >= Detail::Medium && !self.pal.light;
 		let smooth = self.smooth;
 		let [la, lb] = &self.layers;
 		for y in 0..h {
@@ -586,18 +626,11 @@ impl Scene for Ink {
 						c = colour::screen(c, scale(c, (k * k * 90.0) as u32));
 					}
 				}
-				if aurora {
-					// Curtains brighten towards the bottom of the screen and shimmer in vertical rays.
-					let vertical = 0.75 + 0.5 * (y as f32 / h as f32);
-					let k = (self.rays[x] as f32 * (1.0 - self.aurora + self.aurora * vertical)) as u32;
-					c = if k > 256 {
-						colour::add(c, scale(c, k - 256))
-					} else {
-						scale(c, k)
-					};
-				}
 				*px = c;
 			}
+		}
+		if aurora {
+			self.curtains(out);
 		}
 		if cx.detail >= Detail::High {
 			relief(out, self.pal.light);

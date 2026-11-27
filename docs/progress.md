@@ -11,6 +11,19 @@ The resumable log of where the work stands. Newest state first; each phase lists
 - **P4** the ReactOS integration plan (`docs/reactos-integration.md`).
 - **P5** Quill Ghostwriter (Win32, SAV-D20 to SAV-D22), then its Windows 3.x edition `QUILLGW.SCR` (SAV-D23), and `docs/quill-installer-integration.md` (SAV-D24).
 
+## Measurements
+
+**Ink** (`savers-preview bench`, host reference loop 0.66 ms, a Pentium III estimated 11.3 times slower):
+
+| Window | Rung | Host ms | Host fps | P3 est. fps |
+| --- | --- | --- | --- | --- |
+| 800 × 600 | 25% Low | 3.8 | 263 | 23 |
+| 800 × 600 | 100% Ultra | 24.5 | 41 | 3.6 |
+| 1280 × 720 | 25% Low | 3.3 | 304 | 25 |
+| 1280 × 720 | 100% Ultra | 36 to 39 | 26 to 28 | 2.3 |
+
+The 25% Low floor holds. 100% Ultra misses 30 fps at 1280 × 720 on one host core; the output pass (enlargement, vignette and grain at the full size) and the two-layer advection dominate. Rendering bands on several threads in the x86_64 build is the planned fix.
+
 ## Open questions for the owner
 
 - Quill Ghostwriter could be started from Quill's About box (a click on the nib); that is Quill's to decide.

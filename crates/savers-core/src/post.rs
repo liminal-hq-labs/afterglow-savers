@@ -11,7 +11,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::colour::{b, g, luma, mix, r, screen};
+use crate::colour::{b, g, mix, r, screen};
 use crate::frame::Frame;
 use crate::rng::hash32;
 
@@ -284,6 +284,18 @@ fn vfall(d: f32) -> u32 {
 	(crate::math::saturate(f * f) * 256.0) as u32
 }
 
+/// The grain's weight for a level: 96 in the blacks and whites, up to 256 in the mid-tones.
+const GRAIN_WEIGHT: [u8; 256] = {
+	let mut t = [0u8; 256];
+	let mut l = 0;
+	while l < 256 {
+		let m = (l * (255 - l)) >> 6;
+		t[l] = (96 + if m < 159 { m } else { 159 }) as u8;
+		l += 1;
+	}
+	t
+};
+
 /// One finished pixel: scaled by `k` (0 to 256), plus grain `gr`, weighted towards the mid-tones.
 #[inline(always)]
 fn finish_px(c: u32, k: u32, gr: i32) -> u32 {
@@ -293,10 +305,9 @@ fn finish_px(c: u32, k: u32, gr: i32) -> u32 {
 	if gr == 0 {
 		return c;
 	}
-	// Grain is strongest in the mid-tones and lighter in the blacks, so the void stays deep but never still.
-	let l = luma(c) as i32;
-	let w = 96 + (l * (255 - l) >> 6).min(160);
-	let d = gr * w >> 8;
+	// Grain is strongest in the mid-tones and lighter in the blacks, so the void stays deep but never still. Green stands in
+	// for the luma, which saves two multiplies a pixel.
+	let d = gr * GRAIN_WEIGHT[g(c) as usize] as i32 >> 8;
 	let ch = |v: u32| (v as i32 + d).clamp(0, 255) as u32;
 	(ch(r(c)) << 16) | (ch(g(c)) << 8) | ch(b(c))
 }
