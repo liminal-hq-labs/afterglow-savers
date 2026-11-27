@@ -138,6 +138,8 @@ pub struct MazeScene {
 	/// Down a wall's height in 64 steps: the light (256 is unchanged) and the sky's warm light added at the top.
 	wall_shade: Vec<u16>,
 	wall_warm: Vec<u32>,
+	/// Daylight: the light palette's sky and haze.
+	day: bool,
 	/// The brightest window on screen this frame: column, row and strength.
 	window: Option<(f32, f32, f32)>,
 }
@@ -145,7 +147,14 @@ pub struct MazeScene {
 impl MazeScene {
 	pub fn new(settings: &Settings, seed: u32, w: usize, h: usize) -> MazeScene {
 		let detail = settings.detail();
-		let pal = palette_for(settings);
+		// By day the sky and the haze come from the palette's light mode; the stone, glass and floor keep its dusk materials, lit
+		// more strongly, so the architecture is the same place in daylight.
+		let day = palette_for(settings);
+		let pal = if day.light {
+			crate::palette::Palette::new(day.id, false)
+		} else {
+			day
+		};
 		let mut rng = Rng::new(seed as u64 ^ 0x3A2E_0000_0000);
 		let ts = if detail == Detail::Low { 64 } else { 128 };
 		let tex = (0..MATERIALS)
@@ -153,7 +162,7 @@ impl MazeScene {
 			.collect();
 		let floor_kind = settings.get(Key::Floor);
 		let floor_tex = paint_floor(floor_kind, ts, &pal, &mut rng.fork(20));
-		let (sky, sky_w, sky_h) = paint_sky(&pal, h, &mut rng.fork(21));
+		let (sky, sky_w, sky_h) = paint_sky(&pal, if day.light { Some(&day) } else { None }, h, &mut rng.fork(21));
 		let size = settings.get(Key::MazeSize) as usize;
 		let mut first = rng.fork(100);
 		let maze = Maze::new(size, &mut first);
@@ -163,7 +172,12 @@ impl MazeScene {
 		} else {
 			Some(Maze::new(size, &mut rng.fork(101)))
 		};
-		let fog = mixf(pal.n(800), pal.hue(pal.glow_n - 1), 0.35);
+		let fog = if day.light {
+			mixf(day.ground(), day.hue(0), 0.18)
+		} else {
+			mixf(pal.n(800), pal.hue(pal.glow_n - 1), 0.35)
+		};
+		let daylight = if day.light { 1.55 } else { 1.0 };
 		MazeScene {
 			w,
 			h,
@@ -191,7 +205,7 @@ impl MazeScene {
 			ripple: detail >= Detail::Ultra || floor_kind == 1,
 			shaft_buf: Vec::new(),
 			wall_shade: (0..64)
-				.map(|i| (270.0 - 140.0 * smoothstep(0.5, 1.0, i as f32 / 63.0)) as u16)
+				.map(|i| ((270.0 - 140.0 * smoothstep(0.5, 1.0, i as f32 / 63.0)) * daylight) as u16)
 				.collect(),
 			wall_warm: (0..64)
 				.map(|i| {
@@ -202,6 +216,7 @@ impl MazeScene {
 				})
 				.collect(),
 			window: None,
+			day: day.light,
 		}
 	}
 }
@@ -679,18 +694,37 @@ fn paint_floor(kind: u32, ts: usize, pal: &Palette, rng: &mut Rng) -> Vec<u32> {
 }
 
 /// The sky as a panorama: angle across (1024 columns), rows down to the horizon; a dusk gradient with clouds and stars.
-fn paint_sky(pal: &Palette, h: usize, rng: &mut Rng) -> (Vec<u32>, usize, usize) {
+/// The sky; with `day`, a daytime sky from the palette's light mode: tinted overhead, a warm haze at the horizon, no stars.
+fn paint_sky(pal: &Palette, day: Option<&Palette>, h: usize, rng: &mut Rng) -> (Vec<u32>, usize, usize) {
 	let seed = rng.next_u32();
 	let sw = 1024;
 	let sh = (h / 2 + 2).max(8);
 	let n = pal.glow_n;
-	let ramp = Ramp::new(&[
-		(0.0, pal.ground()),
-		(0.45, mixf(pal.ground(), pal.hue(n - 1), 0.45)),
-		(0.75, mixf(pal.hue(n - 1), pal.hue(1 % n), 0.5)),
-		(0.92, mixf(pal.hue(1 % n), pal.hue(0), 0.5)),
-		(1.0, mixf(pal.hue(0), pal.sun, 0.4)),
-	]);
+	let ramp = match day {
+		Some(d) => {
+			// The day sky of the Afterglow wallpapers: paper tinted by the palette's sky hue, most overhead, least at the horizon.
+			use crate::palette::{BLUE, GRAY, ORANGE, PURPLE, PaletteId, YELLOW};
+			let sky = match d.id {
+				PaletteId::Indigo => PURPLE,
+				PaletteId::Ember => YELLOW,
+				PaletteId::Aurora => BLUE,
+				PaletteId::Graphite => GRAY,
+				_ => ORANGE,
+			};
+			Ramp::new(&[
+				(0.0, mixf(d.ground(), sky, 0.34)),
+				(0.6, mixf(d.ground(), sky, 0.16)),
+				(1.0, mixf(d.ground(), sky, 0.05)),
+			])
+		}
+		None => Ramp::new(&[
+			(0.0, pal.ground()),
+			(0.45, mixf(pal.ground(), pal.hue(n - 1), 0.45)),
+			(0.75, mixf(pal.hue(n - 1), pal.hue(1 % n), 0.5)),
+			(0.92, mixf(pal.hue(1 % n), pal.hue(0), 0.5)),
+			(1.0, mixf(pal.hue(0), pal.sun, 0.4)),
+		]),
+	};
 	let mut sky = vec![0u32; sw * sh];
 	for y in 0..sh {
 		let k = y as f32 / (sh - 1) as f32;
@@ -702,7 +736,7 @@ fn paint_sky(pal: &Palette, h: usize, rng: &mut Rng) -> (Vec<u32>, usize, usize)
 			let cloud = smoothstep(0.15, 0.5, c) * smoothstep(0.2, 0.6, k) * (1.0 - smoothstep(0.85, 1.0, k));
 			let mut col = mixf(base, mixf(pal.hue(1 % n), pal.sun, 0.3), cloud * 0.35);
 			let star = hash2(x as i32, y as i32, seed) & 0xFFF;
-			if k < 0.55 && star < 3 {
+			if day.is_none() && k < 0.55 && star < 3 {
 				col = screen(col, scale(pal.n(100), (200.0 * (1.0 - k)) as u32));
 			}
 			sky[y * sw + x] = col;
@@ -832,7 +866,7 @@ impl Scene for MazeScene {
 
 	fn hints(&self, _cx: &Ctx) -> Hints {
 		Hints {
-			threshold: 170,
+			threshold: if self.day { 230 } else { 170 },
 			streak_tint: mixf(self.pal.sun, 0xFFFFFF, 0.25),
 			fade: 1.0,
 			bloom_gain: 1.1,
@@ -1126,6 +1160,9 @@ impl MazeScene {
 						c
 					};
 					c = mix(c, scale(refl, 200), rk);
+				}
+				if self.day {
+					c = scale_wide(c, 360);
 				}
 				out.px[y * w + x] = mix(c, self.fog, fogk);
 			}

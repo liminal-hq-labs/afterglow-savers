@@ -72,7 +72,10 @@ impl SaverKind {
 
 	/// Whether the scene has a light (day) mode.
 	pub fn has_light_mode(self) -> bool {
-		matches!(self, SaverKind::Ink | SaverKind::Ghostwriter | SaverKind::Collection)
+		matches!(
+			self,
+			SaverKind::Ink | SaverKind::Maze | SaverKind::Ghostwriter | SaverKind::Collection
+		)
 	}
 }
 
