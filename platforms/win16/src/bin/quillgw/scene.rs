@@ -208,12 +208,12 @@ impl Scene {
 	pub fn step(&mut self) {
 		self.tick = self.tick.wrapping_add(1);
 		let blink = self.tick / 7;
-		let focus = blink % 2 == 0;
+		let focus = blink.is_multiple_of(2);
 		if self.visit && focus != self.focus_on {
 			self.focus_on = focus;
 			self.dirty = true;
 		}
-		let nib = self.wait == 0 || self.tick / 6 % 2 == 0;
+		let nib = self.wait == 0 || (self.tick / 6).is_multiple_of(2);
 		if nib != self.nib_on {
 			self.nib_on = nib;
 			self.dirty = true;
@@ -312,7 +312,7 @@ impl Scene {
 				}
 			}
 			Phase::PageEnd => {
-				if self.settings.visit && self.pages % 2 == 0 {
+				if self.settings.visit && self.pages.is_multiple_of(2) {
 					self.visit = true;
 					self.focus_on = true;
 					self.phase = Phase::Visit;

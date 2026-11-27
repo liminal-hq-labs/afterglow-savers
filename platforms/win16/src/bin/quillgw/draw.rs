@@ -422,10 +422,8 @@ impl Gdi {
 		for (i, label) in labels.iter().enumerate() {
 			let x = left + 16 + i as i32 * 81;
 			self.button(x, top + 62, 70, 22, label);
-			if i == 2 {
-				if focus {
-					self.focus_rect(x + 4, top + 66, x + 66, top + 80);
-				}
+			if i == 2 && focus {
+				self.focus_rect(x + 4, top + 66, x + 66, top + 80);
 			}
 		}
 	}

@@ -13,7 +13,8 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 cargo fmt --all -- --check
-RUSTC_BOOTSTRAP=1 cargo clippy --release --locked -- -D warnings
+# The three allowed lints are in the runtime copied from Quill (src/lib.rs, src/fault.rs), which is kept as it is (PROVENANCE.md).
+RUSTC_BOOTSTRAP=1 cargo clippy --release --locked -- -D warnings -A function-casts-as-integer -A asm-sub-register -A clippy::manual-c-str-literals
 python3 -m unittest discover -s tests
 
 out="$(mktemp -d)"

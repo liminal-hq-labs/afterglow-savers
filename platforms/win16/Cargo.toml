@@ -16,6 +16,9 @@ publish = false
 [features]
 # The panic box names the source file and line. It costs several kilobytes of code.
 panic-location = []
+# Features the runtime in src/lib.rs tests for; this edition builds without them.
+noalias = []
+bench = []
 
 [lib]
 name = "w16"

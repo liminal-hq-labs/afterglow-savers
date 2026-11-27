@@ -5,11 +5,11 @@
 
 export CARGO_BUILD_JOBS ?= 4
 
-.PHONY: check check-fast headers fmt clippy test deny preview win32 win32-fmt win32-clippy win32-test win32-build repro smoke
+.PHONY: check check-fast headers fmt clippy test deny preview win16 win32 win32-fmt win32-clippy win32-test win32-build repro smoke
 
 # `check` is the whole gate: the host checks, the Win32 build and its structure, import, Pentium and size checks, the byte-identical
 # rebuild in three directories, and the Wine run (which says SKIP when Wine or Xvfb is missing).
-check: check-fast deny win32 repro smoke
+check: check-fast deny win32 win16 repro smoke
 
 check-fast: headers fmt clippy test
 
@@ -31,6 +31,10 @@ deny:
 
 preview:
 	cargo build --release --locked -p savers-preview
+
+# The Windows 3.x edition is a workspace of its own too: format, lints, the packer's tests, the build, and the CPU, branch and size checks.
+win16:
+	bash platforms/win16/check.sh
 
 # The Win32 shells are their own workspace, so they have their own targets.
 win32: win32-fmt win32-clippy win32-test win32-build
