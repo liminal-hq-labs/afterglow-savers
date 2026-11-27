@@ -110,9 +110,11 @@ pub enum Key {
 	LoopMaze,
 	Sound,
 	Volume,
+	/// The Cracktro's scrolling words: 0 hides them (the default), 1 shows them (SAV-D60).
+	Scroller,
 }
 
-pub const KEY_COUNT: usize = Key::Volume as usize + 1;
+pub const KEY_COUNT: usize = Key::Scroller as usize + 1;
 
 /// How the dialog shows a field.
 #[derive(Clone, Copy, Debug)]
@@ -237,6 +239,8 @@ const CRACKTRO: &[Field] = &[
 		Control::Mask(&["Copper bars", "Plasma", "Rotozoomer", "Tunnel", "Vector bars"]),
 	),
 	f(Key::Shuffle, "Shuffle", "Shuffle the parts", 0, 1, 0, Control::Check),
+	// SAV-D60: the words are the person's to ask for; `Message` (the text field below) is read only while this is 1.
+	f(Key::Scroller, "Scroller", "Show the scrolling words", 0, 1, 0, Control::Check),
 ];
 const COLLECTION: &[Field] = &[
 	f(Key::Duration, "Duration", "Seconds per saver", 30, 600, 90, Control::Number),
@@ -499,6 +503,28 @@ mod tests {
 		assert_eq!(back.get(Key::Palette), 3);
 		assert_eq!(back.text, "line one\nline two");
 		assert_eq!(Settings::defaults(SaverKind::Ink).get(Key::Palette), 0);
+	}
+
+	#[test]
+	fn the_scroller_is_off_by_default_and_round_trips() {
+		let mut s = Settings::defaults(SaverKind::Cracktro);
+		assert_eq!(s.get(Key::Scroller), 0);
+		s.set(Key::Scroller, 1);
+		s.text = "Hello from me".to_string();
+		let mut m = Map::default();
+		s.save(&mut m);
+		assert_eq!(m.dwords.get("Scroller"), Some(&1));
+		assert_eq!(m.texts.get("Message").map(String::as_str), Some("Hello from me"));
+		let back = Settings::load(SaverKind::Cracktro, &m);
+		assert_eq!(back.get(Key::Scroller), 1);
+		assert_eq!(back.text, "Hello from me");
+		// A value outside 0 and 1 reads as the default, which is off.
+		m.set_dword("Scroller", 7);
+		assert_eq!(Settings::load(SaverKind::Cracktro, &m).get(Key::Scroller), 0);
+		// A saver that has no scroller does not store one.
+		let mut ink = Map::default();
+		Settings::defaults(SaverKind::Ink).save(&mut ink);
+		assert!(!ink.dwords.contains_key("Scroller"));
 	}
 
 	#[test]

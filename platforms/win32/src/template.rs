@@ -391,7 +391,14 @@ pub(crate) fn place(b: &mut Builder, fields: &[(usize, Field)], x: i16, mut y: i
 /// the buttons.
 pub fn build(kind: SaverKind) -> Template {
 	let all: Vec<(usize, Field)> = fields(kind).enumerate().collect();
-	let group_of = |n: u8| -> Vec<(usize, Field)> { all.iter().copied().filter(|(_, f)| section(f.key) == n).collect() };
+	// The Scroller check box shares the text field's label row (it is what the field waits for), so it is not a row of its own.
+	let group_of = |n: u8| -> Vec<(usize, Field)> {
+		all.iter()
+			.copied()
+			.filter(|(_, f)| section(f.key) == n && f.key != Key::Scroller)
+			.collect()
+	};
+	let scroller = all.iter().copied().find(|(_, f)| f.key == Key::Scroller);
 	let (look, quality, finish, scene) = (group_of(0), group_of(1), group_of(2), group_of(3));
 	let inner_half = HALF - PAD * 2;
 	let inner_full = FULL - PAD * 2;
@@ -442,7 +449,14 @@ pub fn build(kind: SaverKind) -> Template {
 	place(&mut b, &scene[cut..], MARGIN + PAD + sub + PAD, scene_y + GROUP_TOP, sub);
 	if let Some((_, label, _)) = text {
 		let y = scene_y + GROUP_TOP + scene_body;
-		b.label(label, MARGIN + PAD, y, inner_full);
+		match scroller {
+			Some(scroller) => {
+				// The check box on the left, the field's own label on the right.
+				place(&mut b, &[scroller], MARGIN + PAD, y, inner_full / 2);
+				b.label(label, MARGIN + PAD + inner_full / 2, y, inner_full / 2);
+			}
+			None => b.label(label, MARGIN + PAD, y, inner_full),
+		}
 		b.item(
 			Class::Edit,
 			WS_TABSTOP | WS_BORDER | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN,

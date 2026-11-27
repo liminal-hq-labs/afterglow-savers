@@ -36,6 +36,35 @@ fn saver(kind: SaverKind, detail: u32, w: usize, h: usize) -> Saver {
 	Saver::new(s, scene, w, h, false)
 }
 
+/// The Cracktro's frames at a few times, for the scroller tests: its own words (or none), the Scroller setting.
+fn cracktro_hash(scroller: u32, words: &str) -> u64 {
+	let mut s = Settings::defaults(SaverKind::Cracktro);
+	s.set(Key::Detail, 2);
+	s.set(Key::RenderScale, 100);
+	s.set(Key::Grain, 0);
+	s.set(Key::Scroller, scroller);
+	s.text = words.to_string();
+	let (rw, rh) = render_size(&s, 160, 90, false);
+	let scene = build(SaverKind::Cracktro, &s, 7, rw, rh);
+	let mut sv = Saver::new(s, scene, 160, 90, false);
+	let mut all = 0xCBF2_9CE4_8422_2325u64;
+	for t in [1.0, 3.5, 8.0, 14.0] {
+		all = (all ^ fnv(&sv.at(t).px)).wrapping_mul(0x0100_0000_01B3);
+	}
+	all
+}
+
+/// SAV-D60: with the scroller off the frame does not depend on the words; on, it does, and it differs from off.
+#[test]
+fn the_scroller_words_show_only_when_asked_for() {
+	assert_eq!(cracktro_hash(0, ""), cracktro_hash(0, "Some of my own words"));
+	let default_words = cracktro_hash(1, "");
+	let own_words = cracktro_hash(1, "Some of my own words");
+	assert_ne!(default_words, own_words);
+	assert_ne!(cracktro_hash(0, ""), default_words);
+	assert_ne!(cracktro_hash(0, ""), own_words);
+}
+
 fn fnv(px: &[u32]) -> u64 {
 	let mut h = 0xCBF2_9CE4_8422_2325u64;
 	for &p in px {

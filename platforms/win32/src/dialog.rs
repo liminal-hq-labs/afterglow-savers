@@ -90,6 +90,17 @@ pub(crate) fn show(dialog: Handle, settings: &Settings) {
 		// SAFETY: the text ends in a NUL.
 		unsafe { sys::SetDlgItemTextA(dialog, i32::from(TEXT_ID), to_edit(&settings.text).as_ptr()) };
 	}
+	sync_scroller(dialog, kind);
+}
+
+/// The Cracktro's text field takes words only while "Show the scrolling words" is ticked (SAV-D60): it is greyed out otherwise. Any
+/// saver without that setting is left as it is.
+pub(crate) fn sync_scroller(dialog: Handle, kind: SaverKind) {
+	if let Some(index) = fields(kind).position(|field| field.key == Key::Scroller) {
+		let on = send(item(dialog, field_id(index)), sys::BM_GETCHECK, 0, 0) != 0;
+		// SAFETY: any window handle is accepted; a missing control gives null and nothing happens.
+		unsafe { sys::EnableWindow(item(dialog, TEXT_ID), i32::from(on)) };
+	}
 }
 
 /// Reads the controls back into the settings; a value a field does not allow becomes its default.
@@ -168,7 +179,7 @@ unsafe extern "system" fn dialog_proc(dialog: Handle, message: u32, wparam: usiz
 					DEFAULTS_ID => {
 						show(dialog, &Settings::defaults((*state).kind));
 					}
-					_ => {}
+					_ => sync_scroller(dialog, (*state).kind),
 				}
 				0
 			}

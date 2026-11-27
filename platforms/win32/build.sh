@@ -55,5 +55,7 @@ build)
 	cp "${CARGO_TARGET_DIR:-$here/target}/$target/release/previewhost.exe" "$out/previewhost.exe"
 	# The worker pool's test program, run by the Wine smoke test (the Pentium build has no pool and answers 2).
 	cp "${CARGO_TARGET_DIR:-$here/target}/$target/release/bandcheck.exe" "$out/bandcheck.exe"
+	# The ReactOS guest check's frame-rate program (scripts/guest/), also not shipped.
+	cp "${CARGO_TARGET_DIR:-$here/target}/$target/release/fpscheck.exe" "$out/fpscheck.exe"
 	;;
 esac

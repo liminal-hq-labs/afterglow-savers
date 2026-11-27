@@ -75,7 +75,7 @@ Two settings set the cost, and both are in every saver's settings:
 
 *A demoscene intro in Afterglow colours: copper bars, plasma, a rotozoomer, a stepped tunnel and vector bars, with a sine scroller greeting everyone who keeps old machines alive.*
 
-**How it works.** Drawn at a low internal resolution by design (a 320-wide stage, scaled up crisply), in five parts that change every 20 to 40 seconds with transitions (a raster wipe, a pixel dissolve, a copper curtain). The scroller runs through every part along the lower third, in an original stroke font drawn at startup, filled with a copper gradient and bending on a sine wave. Bobbing sprites (small stepped suns and diamonds) ride sine paths over the copper bars.
+**How it works.** Drawn at a low internal resolution by design (a 320-wide stage, scaled up crisply), in five parts that change every 20 to 40 seconds with transitions (a raster wipe, a pixel dissolve, a copper curtain). The scroller (only when the person turns it on) runs through every part along the lower third, in an original stroke font drawn at startup, filled with a copper gradient and bending on a sine wave. Bobbing sprites (small stepped suns and diamonds) ride sine paths over the copper bars.
 
 **Parts** (the default order; the order and which parts appear are settings):
 
@@ -89,7 +89,7 @@ Then the cycle repeats. The default message reads, in part: "Afterglow for React
 
 **Palette.** The palette's glow hues and its sun hue as the copper ramp, the neutral 900 as the void, neutral 100 as the scroller's highlight.
 
-**Settings.** Scroller text, which parts play and whether in order or shuffled, scroller speed (the speed slider).
+**Settings.** Whether the scroller shows at all (off by default), the scroller's own text, which parts play and whether in order or shuffled, scroller speed (the speed slider).
 
 **Ladder.** The stage is drawn small and enlarged with hard pixel edges: 240 pixels wide at Low, 320 at Medium, 400 at High (which adds the scroller's reflection in a strip of water), 480 at Ultra. It is the cheapest scene: 2 to 4 ms a frame on the development host at any rung.
 

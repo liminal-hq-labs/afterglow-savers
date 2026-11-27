@@ -442,6 +442,7 @@ unsafe extern "system" {
 	pub fn EndPaint(window: Handle, paint: *const PaintStruct) -> i32;
 	pub fn SendMessageA(window: Handle, message: u32, wparam: usize, lparam: isize) -> isize;
 	pub fn GetDlgItem(dialog: Handle, id: i32) -> Handle;
+	pub fn EnableWindow(window: Handle, enable: i32) -> i32;
 	pub fn SetDlgItemTextA(dialog: Handle, id: i32, text: *const u8) -> i32;
 	pub fn GetDlgItemTextA(dialog: Handle, id: i32, text: *mut u8, max: i32) -> u32;
 	pub fn DialogBoxIndirectParamA(
