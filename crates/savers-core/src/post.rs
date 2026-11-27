@@ -308,8 +308,35 @@ fn finish_px(c: u32, k: u32, gr: i32) -> u32 {
 	// Grain is strongest in the mid-tones and lighter in the blacks, so the void stays deep but never still. Green stands in
 	// for the luma, which saves two multiplies a pixel.
 	let d = gr * GRAIN_WEIGHT[g(c) as usize] as i32 >> 8;
-	let ch = |v: u32| (v as i32 + d).clamp(0, 255) as u32;
-	(ch(r(c)) << 16) | (ch(g(c)) << 8) | ch(b(c))
+	add_saturating(c, d)
+}
+
+/// Adds `d` (-255 to 255) to each channel of a colour, saturating at 0 and 255, two channels at a time: red and blue share one
+/// word with eight guard bits between them, green another. A carry into a guard bit marks a channel that overflowed; a guard bit
+/// borrowed away marks one that underflowed.
+#[inline(always)]
+fn add_saturating(c: u32, d: i32) -> u32 {
+	let (rb, gg) = (c & 0x00FF_00FF, c & 0x0000_FF00);
+	if d >= 0 {
+		let d = d as u32;
+		let rb = rb + d * 0x0001_0001;
+		let gg = gg + (d << 8);
+		let rb_over = rb & 0x0100_0100;
+		let g_over = gg & 0x0001_0000;
+		let rb = (rb | (rb_over - (rb_over >> 8))) & 0x00FF_00FF;
+		let gg = (gg | (g_over - (g_over >> 8))) & 0x0000_FF00;
+		rb | gg
+	} else {
+		let d = (-d) as u32;
+		// Set the guard bits, subtract, and keep a channel only where its guard bit survived.
+		let rb = (rb | 0x0100_0100) - d * 0x0001_0001;
+		let gg = (gg | 0x0001_0000) - (d << 8);
+		let rb_keep = rb & 0x0100_0100;
+		let g_keep = gg & 0x0001_0000;
+		let rb = rb & (rb_keep - (rb_keep >> 8)) & 0x00FF_00FF;
+		let gg = gg & (g_keep - (g_keep >> 8)) & 0x0000_FF00;
+		rb | gg
+	}
 }
 
 /// Box blur along each row, radius `rad`, through a running sum, with the edges clamped.
@@ -374,6 +401,26 @@ mod tests {
 		let out = fin.output(&f, 320, 180, &p, 0);
 		assert_eq!(out.w, 320);
 		assert_eq!(out.get(160, 90), 0xFFFFFF);
+	}
+
+	#[test]
+	fn saturating_add_matches_per_channel() {
+		for &c in &[
+			0x000000u32,
+			0xFFFFFF,
+			0x80FF01,
+			0x01FE80,
+			0x7F7F7F,
+			0xFF0000,
+			0x00FF00,
+			0x0000FF,
+		] {
+			for d in -255..=255 {
+				let ch = |v: u32| (v as i32 + d).clamp(0, 255) as u32;
+				let want = (ch(r(c)) << 16) | (ch(g(c)) << 8) | ch(b(c));
+				assert_eq!(add_saturating(c, d), want, "{c:06x} {d}");
+			}
+		}
 	}
 
 	#[test]
