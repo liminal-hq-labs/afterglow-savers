@@ -1,0 +1,37 @@
+# The Win16 runtime and Quill Ghostwriter for Windows 3.x: Rust `no_std` for a 16-bit code segment, packed into an NE executable.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+# A workspace of its own: it needs `-Zbuild-std` and a custom target, so the main workspace never builds it.
+[workspace]
+
+[package]
+name = "win16"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+publish = false
+
+[features]
+# The panic box names the source file and line. It costs several kilobytes of code.
+panic-location = []
+
+[lib]
+name = "w16"
+path = "src/lib.rs"
+
+[[bin]]
+name = "quillgw"
+path = "src/bin/quillgw/main.rs"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = 0
+strip = false
+
+[profile.dev]
+panic = "abort"
