@@ -82,3 +82,14 @@ Quill's remix recipe (`site/try-reactos/qagrr/qagrr.toml` in the Quill repositor
 ## Open questions
 
 The owner decisions, each with its default, are in [packing.md](packing.md#owner-decisions).
+
+## Checked in a guest (WP-PACK-2, SAV-D84)
+
+The six i586 files were run in the Quill remix's current disk in a headless QEMU guest (1024 × 768, 32 bits, KVM with a Pentium III model; `scripts/guest/check.py`, evidence in `~/Documents/Liminal HQ/Afterglow/Savers/ReactOS check/`). Display Properties lists the five Afterglow names and "Quill Ghostwriter" (when `AGQUILL.SCR` is written) by their string 1 with "(None)" selected; every monitor preview animates; every Settings button opens the Afterglow dialog with its banner and live preview, and Esc brings the preview back; Preview runs full screen with no pointer, a key ends it and so does a pointer move; the Collection chosen with a one-minute timeout started by itself and ended on a key with no lock screen; the Cracktro's words box enables its text field under ReactOS and the words scroll when ticked, and the Cracktro shows none by default. No ReactOS-specific bug turned up, so no saver changed for it. Working set, largest seen: 5.2 MB (Collection) and 5.1 MB or less for the others. Flat out at 1024 × 768 with the defaults (KVM on a modern host, so not a Pentium's speed): Ink 65 to 69 frames a second, Twilight 86 to 87, Cracktro 130, Maze 76 to 112, Collection 38 to 71, Ghostwriter 38 to 65, all above the 30 a second cap.
+
+Findings for the image builds:
+
+- The remix disk, built before the savers, still carries ReactOS's `blankscr.scr` ("Blank screen") and `logon.scr` ("Logon ScreenSaver"), so its list has two stock entries. WP-PACK-4's compact trim has to remove those two, or the compact and remix lists will not be "the five and no others".
+- ReactOS's Display applet ticks "Ask for password on resume" by default, and choosing OK writes `ScreenSaverIsSecure` `"1"`; Winlogon's secure-desktop code is unfinished (its own FIXME), so the Collection ended on a key with no lock screen. Nothing to fix here; a person who ticks nothing gets the same.
+- The monitor preview is stopped while Settings is open (the applet kills it) and restarts after; the black monitor behind the dialog in the screenshots is that, not a fault.
+- Not verified: sound (the AC97 capture does not line up in time with the run), the Afterglow full and compact images, a real Pentium III.
