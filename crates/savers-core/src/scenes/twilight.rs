@@ -300,9 +300,22 @@ impl Twilight {
 				if k > 0.003 {
 					c = screen(c, self.shared.atmosphere_ramp.at(saturate(k)));
 				}
-				// Anti-alias the limb over the last pixel.
-				let edge = (1.0 - sqrt(d2)) * r;
-				*pix = if edge < 1.0 { mixf(*pix, c, edge) } else { c };
+				// Anti-alias the limb over the last pixel, against the background as the halo lights it just outside, so the edge
+				// does not show a dark seam between the lit limb and the glow.
+				let d = sqrt(d2);
+				let edge = (1.0 - d) * r;
+				*pix = if edge < 1.0 {
+					let side = saturate((nx * light.x + ny * light.y) / d.max(1e-3) * 0.6 + 0.55);
+					let k = side * atmos * 1.3;
+					let behind = if k > 0.004 {
+						screen(*pix, self.shared.atmosphere_ramp.at(k * 0.9))
+					} else {
+						*pix
+					};
+					mixf(behind, c, edge)
+				} else {
+					c
+				};
 			}
 		}
 	}
