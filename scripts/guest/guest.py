@@ -3,14 +3,15 @@
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-"""Usage: python3 -I scripts/guest/guest.py --scr DIR [--source IMG] [--work DIR] [--shots DIR] [--seconds N]
+"""Usage: python3 -I scripts/guest/guest.py --scr DIR [--source IMG] [--work DIR] [--shots DIR] [--seconds N] [--audio OUT.wav] [--only NAME]...
 
 The source image is only read: it is copied (sparse) into the work folder, the `.scr` files from DIR are written into
 `ReactOS/system32` with reactos-liminal's mtools wrapper (imported read-only from a reactos-liminal checkout), and a start-up script is
 put in the All Users StartUp folder. That script sets the screensaver in the registry, opens Display Properties on its Screen Saver tab
 (the list and the monitor preview), then runs each saver full screen with /s for a while and ends it, writing a log with times. QEMU
 runs with KVM, a Pentium III CPU model, no display and a monitor socket; the host only sends `screendump` and `quit`. Only this
-script's own QEMU process is ever stopped. The copy is deleted at the end unless --keep is given.
+script's own QEMU process is ever stopped. With --audio, the guest gets an AC97 sound card whose output QEMU writes to that WAV file (no speakers), for checking the savers' sound.
+The copy is deleted at the end unless --keep is given.
 """
 
 import argparse
@@ -95,6 +96,8 @@ def main() -> int:
 	parser.add_argument("--shots", type=Path, default=Path.home() / ".cache/afterglow-savers/guest/shots")
 	parser.add_argument("--dwell", type=int, default=30)
 	parser.add_argument("--keep", action="store_true")
+	parser.add_argument("--audio", type=Path, help="write the guest's AC97 output to this WAV file")
+	parser.add_argument("--only", action="append", default=[], help="run only this .scr (repeatable), e.g. AGINK.SCR")
 	args = parser.parse_args()
 
 	free = shutil.disk_usage(Path.home()).free
@@ -105,7 +108,7 @@ def main() -> int:
 	image = args.work / "afterglow-savers.img"
 	subprocess.run(["cp", "--sparse=always", "--reflink=auto", str(args.source), str(image)], check=True)
 	fat = fat_image(image)
-	savers = [name for name in SAVERS if (args.scr / name).is_file()]
+	savers = [name for name in SAVERS if (args.scr / name).is_file() and (not args.only or name in args.only)]
 	if not savers:
 		sys.exit(f"guest: no .scr files in {args.scr}")
 	for name in savers:
@@ -124,11 +127,13 @@ def main() -> int:
 	sock = args.work / "monitor.sock"
 	if sock.exists():
 		sock.unlink()
+	sound = ["-audiodev", f"wav,id=snd0,path={args.audio}", "-device", "AC97,audiodev=snd0"] if args.audio else []
 	qemu = subprocess.Popen(
 		[
 			"qemu-system-i386", "-machine", "pc", "-cpu", "pentium3", "-m", "768", "-enable-kvm", "-vga", "std",
 			"-display", "none", "-monitor", f"unix:{sock},server,nowait", "-usb", "-device", "usb-tablet",
 			"-drive", f"file={image},format=raw,if=ide,index=0",
+			*sound,
 		]
 	)
 	print(f"guest: QEMU pid {qemu.pid}")

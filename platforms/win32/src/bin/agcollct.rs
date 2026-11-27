@@ -10,6 +10,7 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
+use savers_core::audio::collection::CollectionScore;
 use savers_core::scene::Scene;
 use savers_core::scenes::collection::Collection;
 use savers_core::scenes::{cracktro::Cracktro, ghostwriter::Ghostwriter, ink::Ink, maze::MazeScene, twilight::Twilight};
@@ -30,11 +31,15 @@ fn make(kind: SaverKind, settings: &Settings, seed: u32, w: usize, h: usize) -> 
 }
 
 // The Collection takes each member's own settings from that member's key.
-afterglow_win32::screensaver_main!(SaverKind::Collection, |settings, seed, w, h| Box::new(Collection::new(
-	settings,
-	&afterglow_win32::member_settings(),
-	seed,
-	w,
-	h,
-	make
-)));
+afterglow_win32::screensaver_main!(
+	SaverKind::Collection,
+	|settings, seed, w, h| Box::new(Collection::new(
+		settings,
+		&afterglow_win32::member_settings(),
+		seed,
+		w,
+		h,
+		make
+	)),
+	|settings, seed, rate| Some(Box::new(CollectionScore::new(settings, seed, rate)))
+);

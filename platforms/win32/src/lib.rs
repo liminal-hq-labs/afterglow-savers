@@ -13,6 +13,7 @@ extern crate alloc;
 
 pub mod ansi;
 pub mod cmdline;
+pub mod sound;
 pub mod template;
 pub mod template_v2;
 
@@ -34,9 +35,11 @@ mod rt_x86;
 mod saver;
 #[cfg(all(windows, not(test)))]
 mod sys;
+#[cfg(all(windows, not(test)))]
+mod waveout;
 
 #[cfg(all(windows, not(test)))]
-pub use saver::{MakeScene, run};
+pub use saver::{MakeScene, MakeScore, run};
 #[cfg(all(windows, not(test)))]
 pub use sys::ExitProcess;
 
@@ -75,14 +78,14 @@ pub fn installed_beside(name: &str) -> bool {
 	attributes != u32::MAX && attributes & 0x10 == 0
 }
 
-/// The entry point of a `.scr` program: runs the saver and exits with its code. `$kind` is its `SaverKind`, `$make` its scene maker.
+/// The entry point of a `.scr` program: runs the saver and exits with its code. `$kind` is its `SaverKind`, `$make` its scene maker and `$score` its score maker.
 #[cfg(all(windows, not(test)))]
 #[macro_export]
 macro_rules! screensaver_main {
-	($kind:expr, $make:expr) => {
+	($kind:expr, $make:expr, $score:expr) => {
 		#[unsafe(no_mangle)]
 		pub extern "C" fn start() -> ! {
-			let code = $crate::run($kind, $make);
+			let code = $crate::run($kind, $make, $score);
 			// SAFETY: ends the process.
 			unsafe { $crate::ExitProcess(code) }
 		}

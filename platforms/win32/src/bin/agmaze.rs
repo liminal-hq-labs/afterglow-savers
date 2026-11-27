@@ -9,10 +9,13 @@
 extern crate alloc;
 
 use alloc::boxed::Box;
+use savers_core::audio::maze::MazeScore;
 use savers_core::scenes::maze::MazeScene;
 use savers_core::settings::SaverKind;
 
 // The Maze's own constructor, so only that scene is linked.
-afterglow_win32::screensaver_main!(SaverKind::Maze, |settings, seed, w, h| Box::new(MazeScene::new(
-	settings, seed, w, h
-)));
+afterglow_win32::screensaver_main!(
+	SaverKind::Maze,
+	|settings, seed, w, h| Box::new(MazeScene::new(settings, seed, w, h)),
+	|settings, seed, rate| Some(Box::new(MazeScore::new(settings, seed, rate)))
+);

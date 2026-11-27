@@ -10,7 +10,7 @@
 use alloc::vec::Vec;
 
 use super::{Cues, Noise, Reverb, Score, Smooth, Svf, Tables, key_for, lookup, note, step};
-use crate::math::exp;
+use crate::math::{exp, fract};
 use crate::palette::PaletteId;
 use crate::rng::Rng;
 use crate::settings::{Key, Settings};
@@ -108,7 +108,7 @@ impl Score for GhostwriterScore {
 			}
 			if let Some((f, age)) = self.bell.as_mut() {
 				*age += 1.0 / rate;
-				let s = lookup(&tables.sine, (*f * *age) % 1.0) * 0.02 * exp(-*age * 2.5);
+				let s = lookup(&tables.sine, fract(*f * *age)) * 0.02 * exp(-*age * 2.5);
 				left += s;
 				right += s;
 				send += s;

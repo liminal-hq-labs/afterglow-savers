@@ -10,10 +10,13 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
+use savers_core::audio::ghostwriter::GhostwriterScore;
 use savers_core::scenes::ghostwriter::Ghostwriter;
 use savers_core::settings::SaverKind;
 
 // Ghostwriter's own constructor, so only that scene is linked.
-afterglow_win32::screensaver_main!(SaverKind::Ghostwriter, |settings, seed, w, h| Box::new(Ghostwriter::new(
-	settings, seed, w, h
-)));
+afterglow_win32::screensaver_main!(
+	SaverKind::Ghostwriter,
+	|settings, seed, w, h| Box::new(Ghostwriter::new(settings, seed, w, h)),
+	|settings, seed, rate| Some(Box::new(GhostwriterScore::new(settings, seed, rate)))
+);

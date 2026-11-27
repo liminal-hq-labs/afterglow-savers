@@ -7,6 +7,7 @@ use alloc::boxed::Box;
 use core::cell::Cell;
 use core::ffi::c_void;
 
+use savers_core::audio::Score;
 use savers_core::frame::Frame;
 use savers_core::saver::{Saver, render_size};
 use savers_core::scene::Scene;
@@ -17,9 +18,12 @@ use crate::cmdline::{self, Mode};
 use crate::dialog;
 use crate::registry::RegStore;
 use crate::sys::{self, Handle};
+use crate::waveout::Player;
 
 /// Makes a saver's scene for a render size: the scene constructor, or `savers_core::scenes::build` for the Collection.
 pub type MakeScene = fn(&Settings, u32, usize, usize) -> Box<dyn Scene>;
+/// Makes a saver's score for a seed and a sample rate; each program names its own, so only that saver's score is linked.
+pub type MakeScore = fn(&Settings, u32, u32) -> Option<Box<dyn Score>>;
 
 const CLASS_NAME: &[u8] = b"WindowsScreenSaverClass\0";
 /// How far the mouse may drift from where the first move found it before the saver ends.
@@ -250,7 +254,7 @@ fn screen_rect() -> (i32, i32, i32, i32) {
 }
 
 /// Creates the window and runs the frame loop until it is closed. Returns the process exit code.
-fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
+fn run_window(kind: SaverKind, make: MakeScene, score: MakeScore, parent: Option<Handle>) -> u32 {
 	let settings = Settings::load(kind, &RegStore::open(kind));
 	let preview = parent.is_some();
 	let (x, y, width, height) = match parent {
@@ -273,13 +277,15 @@ fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
 		None => screen_rect(),
 	};
 	let (render_w, render_h) = render_size(&settings, width as usize, height as usize, preview);
-	let scene = make(&settings, seed_for(&settings), render_w, render_h);
+	let seed = seed_for(&settings);
+	let scene = make(&settings, seed, render_w, render_h);
 	let fps = if preview {
 		PREVIEW_FPS.min(settings.get(Key::MaxFps))
 	} else {
 		settings.get(Key::MaxFps)
 	}
 	.max(1);
+	let sound_settings = settings.clone();
 	let mut saver = Saver::new(settings, scene, width as usize, height as usize, preview);
 
 	let shared = Shared {
@@ -324,6 +330,13 @@ fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
 		unsafe { sys::ShowCursor(0) };
 	}
 
+	// Sound is for the full-screen run only: the preview and the settings dialog stay silent, and a machine with no wave device runs
+	// without it.
+	let mut sound = if preview {
+		None
+	} else {
+		Player::start(&sound_settings, seed, make, score)
+	};
 	let clock = Clock::new();
 	let frame_length = 1.0 / f64::from(fps);
 	let mut last = clock.seconds();
@@ -363,6 +376,9 @@ fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
 				continue;
 			}
 			last = now;
+			if let Some(player) = sound.as_mut() {
+				player.pump(elapsed);
+			}
 			let frame = saver.step(elapsed as f32);
 			blit(window, frame);
 		}
@@ -370,7 +386,7 @@ fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
 }
 
 /// The program: reads the command line and runs the mode it names. Returns the exit code.
-pub fn run(kind: SaverKind, make: MakeScene) -> u32 {
+pub fn run(kind: SaverKind, make: MakeScene, score: MakeScore) -> u32 {
 	// SAFETY: the command line is a NUL-terminated string the system keeps alive.
 	let line = unsafe {
 		let start = sys::GetCommandLineA();
@@ -381,14 +397,14 @@ pub fn run(kind: SaverKind, make: MakeScene) -> u32 {
 		core::slice::from_raw_parts(start, length)
 	};
 	match cmdline::parse(line) {
-		Mode::Full => run_window(kind, make, None),
+		Mode::Full => run_window(kind, make, score, None),
 		Mode::Preview(handle) => {
 			let parent = handle as Handle;
 			// SAFETY: any handle value may be asked about.
 			if handle == 0 || unsafe { sys::IsWindow(parent) } == 0 {
 				return 1;
 			}
-			run_window(kind, make, Some(parent))
+			run_window(kind, make, score, Some(parent))
 		}
 		Mode::Settings(owner) => {
 			// SAFETY: any handle value may be asked about.

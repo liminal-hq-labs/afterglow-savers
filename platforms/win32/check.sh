@@ -17,6 +17,8 @@ esac
 # SAV-D14 as revised by SAV-D29: 384 KiB each and 1.5 MiB for the five main files, a guard against accidents rather than a target;
 # AGQUILL (SAV-D20) has its own 384 KiB, outside the five.
 each=393216
+# The Collection links every scene and every score (SAV-D47), so it has 448 KiB.
+collection=458752
 all=1572864
 total=0
 for name in AGMAZE AGCRACK AGTWILIT AGINK AGCOLLCT AGQUILL; do
@@ -25,8 +27,10 @@ for name in AGMAZE AGCRACK AGTWILIT AGINK AGCOLLCT AGQUILL; do
 	bash "$here/tools/check-imports.sh" "$arch" "$scr"
 	[ "$arch" != i586 ] || bash "$here/tools/scan-pentium.sh" "$scr"
 	size="$(stat -c %s "$scr")"
-	if [ "$size" -gt "$each" ]; then
-		echo "FAIL check: $name.SCR is $size bytes, over the $each byte budget" >&2
+	limit="$each"
+	[ "$name" != AGCOLLCT ] || limit="$collection"
+	if [ "$size" -gt "$limit" ]; then
+		echo "FAIL check: $name.SCR is $size bytes, over the $limit byte budget" >&2
 		exit 1
 	fi
 	[ "$name" = AGQUILL ] || total=$((total + size))

@@ -279,6 +279,56 @@ unsafe extern "system" {
 	pub fn HeapFree(heap: Handle, flags: u32, block: *mut c_void) -> i32;
 }
 
+// Wave output (winmm): the saver's sound, queued in three buffers.
+pub const WAVE_MAPPER: u32 = 0xFFFF_FFFF;
+pub const WAVE_FORMAT_PCM: u16 = 1;
+pub const WHDR_DONE: u32 = 0x0000_0001;
+pub const MMSYSERR_NOERROR: u32 = 0;
+
+#[repr(C)]
+pub struct WaveFormatEx {
+	pub format_tag: u16,
+	pub channels: u16,
+	pub samples_per_second: u32,
+	pub bytes_per_second: u32,
+	pub block_align: u16,
+	pub bits_per_sample: u16,
+	pub extra_size: u16,
+}
+
+#[repr(C)]
+pub struct WaveHdr {
+	pub data: *mut u8,
+	pub buffer_length: u32,
+	pub bytes_recorded: u32,
+	pub user: usize,
+	pub flags: u32,
+	pub loops: u32,
+	pub next: *mut WaveHdr,
+	pub reserved: usize,
+}
+
+#[cfg_attr(
+	target_arch = "x86",
+	link(name = "winmm", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "winmm", kind = "raw-dylib"))]
+unsafe extern "system" {
+	pub fn waveOutOpen(
+		device: *mut Handle,
+		device_id: u32,
+		format: *const WaveFormatEx,
+		callback: usize,
+		instance: usize,
+		flags: u32,
+	) -> u32;
+	pub fn waveOutPrepareHeader(device: Handle, header: *mut WaveHdr, size: u32) -> u32;
+	pub fn waveOutUnprepareHeader(device: Handle, header: *mut WaveHdr, size: u32) -> u32;
+	pub fn waveOutWrite(device: Handle, header: *mut WaveHdr, size: u32) -> u32;
+	pub fn waveOutReset(device: Handle) -> u32;
+	pub fn waveOutClose(device: Handle) -> u32;
+}
+
 #[cfg_attr(
 	target_arch = "x86",
 	link(name = "advapi32", kind = "raw-dylib", import_name_type = "undecorated")

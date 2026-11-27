@@ -79,3 +79,9 @@ user32.dll!SetWindowLongA 32
 user32.dll!SetWindowLongPtrA 64
 user32.dll!SystemParametersInfoA
 user32.dll!TranslateMessage
+winmm.dll!waveOutClose
+winmm.dll!waveOutOpen
+winmm.dll!waveOutPrepareHeader
+winmm.dll!waveOutReset
+winmm.dll!waveOutUnprepareHeader
+winmm.dll!waveOutWrite
