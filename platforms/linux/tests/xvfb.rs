@@ -1,6 +1,11 @@
-// Runs the binary on its own Xvfb with the lavapipe software Vulkan driver: the window, fullscreen at the screen's size, the exit
-// rules, xscreensaver's window, and sound through ALSA's file plug-in. Never touches the desktop session: every command gets its own
-// DISPLAY and no WAYLAND_DISPLAY, and sound goes to a file. `make check-gpu` runs these (they are `#[ignore]` for `make check`).
+// Runs the binary on its own Xvfb with the lavapipe software Vulkan driver: window, fullscreen, exit rules, the hack and sound.
+//
+// (c) Copyright 2026 Liminal HQ, Scott Morris
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! Never touches the desktop session: every command gets its own `DISPLAY` and no `WAYLAND_DISPLAY`, the framebuffer is grabbed from
+//! that server only, and sound goes to a file through ALSA's file plug-in. `make check-gpu` runs these; they are `#[ignore]` for
+//! `make test`.
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
