@@ -71,6 +71,7 @@ user32.dll!RegisterClassA
 user32.dll!ReleaseDC
 user32.dll!SendMessageA
 user32.dll!SetCursor
+user32.dll!ShowCursor
 user32.dll!SetDlgItemTextA
 user32.dll!SetFocus
 user32.dll!SetTimer

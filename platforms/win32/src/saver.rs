@@ -318,6 +318,11 @@ fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
 	if window.is_null() {
 		return 1;
 	}
+	if !preview {
+		// Hide the pointer for the run, as `scrnsave.lib` does; `WM_SETCURSOR` keeps it hidden over the window.
+		// SAFETY: plain counter calls, undone before the program ends.
+		unsafe { sys::ShowCursor(0) };
+	}
 
 	let clock = Clock::new();
 	let frame_length = 1.0 / f64::from(fps);
@@ -335,6 +340,9 @@ fn run_window(kind: SaverKind, make: MakeScene, parent: Option<Handle>) -> u32 {
 		loop {
 			while sys::PeekMessageA(&mut message, sys::NULL, 0, 0, sys::PM_REMOVE) != 0 {
 				if message.message == sys::WM_QUIT {
+					if !preview {
+						sys::ShowCursor(1);
+					}
 					return 0;
 				}
 				sys::TranslateMessage(&message);

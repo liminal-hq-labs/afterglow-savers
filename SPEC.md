@@ -38,6 +38,7 @@ The first letter after a `/` or `-`, in either case, picks the mode, as `scrnsav
 
 - One borderless topmost window (`WS_POPUP`, `WS_EX_TOPMOST | WS_EX_TOOLWINDOW`) over the whole virtual screen (`SM_XVIRTUALSCREEN` and the rest; the primary screen where those metrics are zero), with no cursor. On several monitors the one picture spans them all.
 - **It ends** on any key or mouse button, on losing activation (once it has been active), and on a mouse move once the cursor is more than 10 pixels in x or y from where the first move found it. It also ends when the system sends `WM_CLOSE` or the process is terminated, which Winlogon does on activity.
+- The pointer is hidden for the run (`ShowCursor(FALSE)`, restored on exit, with `SetCursor(NULL)` on `WM_SETCURSOR`); the preview pane and the dialogs leave it alone.
 - `SC_SCREENSAVE`, `SC_CLOSE`, `SC_NEXTWINDOW` and `SC_PREVWINDOW` system commands are refused while it runs.
 - It fades up from black over one second and ends at once when told to (no fade out: the user wants their desktop).
 - No password code: NT and ReactOS lock the workstation through Winlogon's `ScreenSaverIsSecure`; Windows 9x passwords are not supported (SAV-D17).
