@@ -61,11 +61,13 @@ Two settings set the cost, and both are in every saver's settings:
 - **Shot 1, 0–25 s: the establishing shot.** The planet small and off-centre on the left third, slowly turning; the terminator crosses its face; one moon swings in front, its shadow a soft dot on the clouds.
 - **Shot 2, 25–50 s: the push-in.** A slow dolly towards the terminator until the planet fills two thirds of the frame. The cloud bands drift faster than the ground; the atmosphere's rim glows rose where day meets night. **Wow:** as the camera passes the limb the rim brightens into a streak of light across the frame (the anamorphic streak catching the atmosphere).
 - **Shot 3, 50–70 s: the satellite pass.** A wide shot from slightly above; a satellite with a blinking light crosses close to the camera, fast, then a second moon rises over the limb.
-- **Shot 4, 70–90 s: the drift.** The camera rolls a few degrees and slides along the night side, city lights glinting, the nebula sliding behind with parallax; fade to the next loop with a new light angle.
+- **Shot 4, 70–90 s: the drift.** The camera rolls a few degrees and slides along the night side, city lights glinting, the nebula sliding behind with parallax, lit from behind; **wow:** the sun slides out from behind the limb. Fade to the next loop.
 
-**Palette.** Seas in the neutral 700–800 range tinted by the first glow hue, land in the glow hues at low saturation, highlands lifted towards neutral 300, ice in neutral 200, the atmosphere in the glow hues, the sun light in the palette's sun hue. The light never comes from a visible sun.
+**The sun** (on by default, the `Sun` setting): a small white-hot disc in the palette's sun hue with a soft glow, never on a horizon. In the establishing shot it sits far off on the lit side, a star among the stars; in the night-side drift the light comes from behind, and the sun slides out from behind the limb through the atmosphere, a diamond-ring glimpse the bloom and streaks pick up. It is drawn behind the planet and moons, so they hide it as they pass.
 
-**Settings.** Planet seed (0 means a new world each run), atmosphere strength, moons (0–2).
+**Palette.** Seas in the neutral 700–800 range tinted by the first glow hue, land in the glow hues at low saturation, highlands lifted towards neutral 300, ice in neutral 200, the atmosphere in the glow hues, the sunlight in the palette's sun hue.
+
+**Settings.** Planet seed (0 means a new world each run), atmosphere strength, moons (0–2), show the sun.
 
 **Ladder.** Low: 256 × 128 maps read nearest, no cloud shadows, no night lights, bloom at an eighth. Medium: 512 × 256 maps read bilinear, cloud shadows. High: the night-side lights. Ultra: the seas' sheen. Start-up paints the maps: about 50 ms at Low and 150 ms at Ultra on the development host.
 

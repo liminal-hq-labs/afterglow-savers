@@ -27,36 +27,37 @@ use crate::settings::{Detail, Key, Settings};
 struct Shot {
 	len: f32,
 	/// Planet centre in screen fractions (x of the width, y of the height), and radius in heights.
-	from: [f32; 6],
-	to: [f32; 6],
+	from: [f32; 7],
+	to: [f32; 7],
 }
 
 // [cx, cy, radius, axis tilt towards the viewer (radians), roll (radians), light angle (radians about the vertical: 0 lights the
-// right half, π/2 lights the face, π the left half, more than π the back, for a crescent)]
+// right half, π/2 lights the face, π the left half, more than π the back, for a crescent), the sun's distance from the planet's
+// centre on screen in planet radii (0 for no sun in the shot)]
 const SHOTS: [Shot; 4] = [
 	// The establishing shot: small, left third, turning.
 	Shot {
 		len: 25.0,
-		from: [0.36, 0.52, 0.22, 0.35, -0.12, 0.35],
-		to: [0.40, 0.50, 0.25, 0.30, -0.08, 0.15],
+		from: [0.36, 0.52, 0.22, 0.35, -0.12, 0.35, 3.0],
+		to: [0.40, 0.50, 0.25, 0.30, -0.08, 0.15, 3.3],
 	},
 	// The push-in towards the terminator.
 	Shot {
 		len: 25.0,
-		from: [0.55, 0.55, 0.30, 0.25, 0.10, 0.1],
-		to: [0.62, 0.78, 0.75, 0.15, 0.18, -0.15],
+		from: [0.55, 0.55, 0.30, 0.25, 0.10, 0.1, 0.0],
+		to: [0.62, 0.78, 0.75, 0.15, 0.18, -0.15, 0.0],
 	},
 	// From slightly above, a satellite passes close.
 	Shot {
 		len: 20.0,
-		from: [0.50, 0.58, 0.34, 0.75, 0.0, 0.45],
-		to: [0.47, 0.56, 0.37, 0.70, -0.05, 0.3],
+		from: [0.50, 0.58, 0.34, 0.75, 0.0, 0.45, 0.0],
+		to: [0.47, 0.56, 0.37, 0.70, -0.05, 0.3, 0.0],
 	},
-	// The drift along the night side.
+	// The drift along the night side, lit from behind: the sun slides out from behind the limb.
 	Shot {
 		len: 20.0,
-		from: [0.70, 0.42, 0.45, 0.2, -0.25, 2.75],
-		to: [0.30, 0.47, 0.48, 0.25, -0.15, 2.95],
+		from: [0.70, 0.42, 0.45, 0.2, -0.25, 3.3, 0.78],
+		to: [0.30, 0.47, 0.48, 0.25, -0.15, 3.55, 1.12],
 	},
 ];
 
@@ -104,6 +105,7 @@ pub struct Twilight {
 	moons: Vec<Moon>,
 	sats: Vec<Satellite>,
 	atmos: f32,
+	sun: bool,
 	atmos_ramp: Ramp,
 	/// The light's colour by how directly it falls (index: n·l from -0.3 to 1).
 	light_ramp: Ramp,
@@ -208,6 +210,7 @@ impl Twilight {
 			moons,
 			sats,
 			atmos: settings.get(Key::Atmosphere) as f32 / 100.0,
+			sun: settings.get(Key::Sun) == 1,
 			atmos_ramp,
 			total: SHOTS.iter().map(|s| s.len).sum(),
 			spin_rate: rng.range(0.012, 0.02),
@@ -216,14 +219,14 @@ impl Twilight {
 	}
 
 	/// The camera at time t: the shot's values eased between its ends, and the fade at the cuts.
-	fn camera(&self, t: f32) -> ([f32; 6], f32, usize) {
+	fn camera(&self, t: f32) -> ([f32; 7], f32, usize) {
 		let loop_t = fract(t / self.total) * self.total;
 		let mut start = 0.0;
 		for (i, shot) in SHOTS.iter().enumerate() {
 			if loop_t < start + shot.len || i == SHOTS.len() - 1 {
 				let k = saturate((loop_t - start) / shot.len);
 				let e = ease(k) * 0.7 + k * 0.3;
-				let mut v = [0.0; 6];
+				let mut v = [0.0; 7];
 				for (j, slot) in v.iter_mut().enumerate() {
 					*slot = lerp(shot.from[j], shot.to[j], e);
 				}
@@ -427,6 +430,13 @@ impl Scene for Twilight {
 			let p = rotate_view(p, s.node, roll);
 			bodies.push((pcx + p.x * r, pcy + p.y * r, p.z, 0.0, i as u32, true));
 		}
+		// The sun, behind everything but the stars, so the planet hides it as it passes: a small white-hot disc in a soft glow.
+		if self.sun && cam[6] > 0.0 {
+			let d = sqrt(light.x * light.x + light.y * light.y).max(1e-3);
+			let sx = pcx + light.x / d * r * cam[6];
+			let sy = pcy + light.y / d * r * cam[6];
+			self.draw_sun(out, sx, sy);
+		}
 		for b in bodies.iter().filter(|b| b.2 < 0.0) {
 			self.draw_body(out, b, light, t, detail);
 		}
@@ -457,6 +467,39 @@ fn rotate_view(p: V3, tilt: f32, roll: f32) -> V3 {
 }
 
 impl Twilight {
+	/// The sun: a core of white through the sun hue, about a fiftieth of the height across, in a glow that falls off over a
+	/// sixth of the height. The finishing chain's bloom and streaks do the rest.
+	fn draw_sun(&self, out: &mut Frame, sx: f32, sy: f32) {
+		let h = self.h as f32;
+		let core = (h * 0.014).max(1.5);
+		let reach = h * 0.17;
+		let glow = mixf(self.pal.sun, self.pal.hue(0), 0.35);
+		let hot = mixf(self.pal.sun, 0xFFFFFF, 0.75);
+		let y0 = ((sy - reach) as i32).max(0);
+		let y1 = ((sy + reach) as i32 + 1).min(self.h as i32);
+		let x0 = ((sx - reach) as i32).max(0);
+		let x1 = ((sx + reach) as i32 + 1).min(self.w as i32);
+		for y in y0..y1 {
+			for x in x0..x1 {
+				let (dx, dy) = (x as f32 + 0.5 - sx, y as f32 + 0.5 - sy);
+				let d = sqrt(dx * dx + dy * dy);
+				let i = y as usize * self.w + x as usize;
+				let c = if d < core {
+					hot
+				} else if d < core + 1.0 {
+					mixf(scale(glow, 230), hot, core + 1.0 - d)
+				} else {
+					let k = 1.0 - d / reach;
+					if k <= 0.0 {
+						continue;
+					}
+					scale(glow, (k * k * k * 190.0 + (core / d) * 110.0).min(255.0) as u32)
+				};
+				out.px[i] = screen(out.px[i], c);
+			}
+		}
+	}
+
 	#[allow(clippy::too_many_arguments)]
 	fn draw_planet(
 		&self,

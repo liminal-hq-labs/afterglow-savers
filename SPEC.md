@@ -85,6 +85,7 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 | Maze | `MazeSize` | Cells along each side | 8–32 | 14 |
 | Twilight | `Atmosphere` | Strength of the atmosphere's glow | 0–100 | 70 |
 | Twilight | `Moons` | Number of moons | 0–2 | 2 |
+| Twilight | `Sun` | Show the sun: far off in the establishing shot, and sliding out from behind the limb in the night-side drift | 0–1 | 1 |
 | Ink | `Thickness` | Width of the ink bands against the water | 0–100 | 50 |
 | Ink | `Turbulence` | Strength and number of the eddies | 0–100 | 50 |
 | Cracktro | `Message` (`REG_SZ`) | The scroller's text, at most 2,000 characters | | §8 |

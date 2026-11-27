@@ -194,6 +194,109 @@ fn dist2(x: f32, y: f32, s: &[f32; 4]) -> f32 {
 	ex * ex + ey * ey
 }
 
+/// How an atlas's glyphs are drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Look {
+	/// Anti-aliased, proportional.
+	Smooth,
+	/// Hard-edged, proportional, as a Windows 3.x bitmap font.
+	Bitmap,
+	/// Hard-edged in fixed cells, as the DOS 8 × 16 text font.
+	Cells,
+}
+
+/// Printable ASCII glyphs drawn once at one height, for setting text quickly.
+pub struct Atlas {
+	pub h: usize,
+	pub look: Look,
+	/// Per glyph from space (32) to tilde (126): advance in pixels and its alpha, `w` × `h`.
+	glyphs: Vec<(usize, usize, Vec<u8>)>,
+}
+
+impl Atlas {
+	pub fn new(h: usize, weight: f32, look: Look) -> Atlas {
+		let h = h.max(6);
+		let cell = (h as f32 * 0.5).max(4.0) as usize;
+		let glyphs = (32u8..127)
+			.map(|c| {
+				let s = [c];
+				let text = core::str::from_utf8(&s).unwrap_or("?");
+				let mut strip = render(text, h, weight);
+				if look != Look::Smooth {
+					for a in strip.alpha.iter_mut() {
+						*a = if *a >= 110 { 255 } else { 0 };
+					}
+				}
+				let advance = if look == Look::Cells {
+					cell
+				} else {
+					strip.w.saturating_sub((h as f32 * 0.03) as usize).max(1)
+				};
+				(advance, strip.w, strip.alpha)
+			})
+			.collect();
+		Atlas { h, look, glyphs }
+	}
+
+	fn index(c: char) -> usize {
+		let c = c.to_ascii_uppercase();
+		if (' '..='~').contains(&c) {
+			c as usize - 32
+		} else {
+			'?' as usize - 32
+		}
+	}
+
+	/// The advance of one character.
+	pub fn advance(&self, c: char) -> usize {
+		self.glyphs[Atlas::index(c)].0
+	}
+
+	/// The width of a text.
+	pub fn width(&self, text: &str) -> usize {
+		text.chars().map(|c| self.advance(c)).sum()
+	}
+
+	/// Draws one character with its top-left at (x, y) in `colour`, clipped to the frame; returns the advance.
+	pub fn draw(&self, f: &mut crate::frame::Frame, x: i32, y: i32, c: char, colour: u32) -> usize {
+		let (adv, w, alpha) = &self.glyphs[Atlas::index(c)];
+		// Cells centre their glyph in the cell.
+		let ox = if self.look == Look::Cells {
+			(*adv as i32 - *w as i32) / 2
+		} else {
+			0
+		};
+		for gy in 0..self.h {
+			let py = y + gy as i32;
+			if py < 0 || py as usize >= f.h {
+				continue;
+			}
+			for gx in 0..*w {
+				let a = alpha[gy * w + gx] as u32;
+				if a == 0 {
+					continue;
+				}
+				let px = x + ox + gx as i32;
+				if px < 0 || px as usize >= f.w {
+					continue;
+				}
+				let i = py as usize * f.w + px as usize;
+				f.px[i] = crate::colour::mix(f.px[i], colour, a + (a >> 7));
+			}
+		}
+		*adv
+	}
+
+	/// Draws a text; returns the width drawn.
+	pub fn text(&self, f: &mut crate::frame::Frame, x: i32, y: i32, text: &str, colour: u32) -> usize {
+		let mut pen = x;
+		for c in text.chars() {
+			pen += self.draw(f, pen, y, c, colour) as i32;
+		}
+		(pen - x) as usize
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

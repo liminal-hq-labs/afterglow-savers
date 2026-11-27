@@ -25,7 +25,7 @@ The same chain as `post.rs`, in the same order and with the same strengths: brig
 
 ## Settings
 
-All of Twilight's settings (SPEC section 7), plus two for this edition:
+All of Twilight's settings (SPEC section 7), including `Sun` (the sun disc and glow, drawn behind the planet so it is hidden by the limb, at the shot table's distance), plus two for this edition:
 
 | Setting | Meaning | Default |
 | --- | --- | --- |

@@ -37,11 +37,12 @@ pub const PAPER: [u32; 9] = [
 	0x1C1B20, 0x2B2A33, 0x484554, 0x6B6877, 0x8F8C98, 0xC9C5D0, 0xE6E0EB, 0xF2EFF4, 0xFBFAF6,
 ];
 
-/// Quill's navy and gold (the Q-with-a-nib identity).
+/// Quill's navy and gold, from Quill's hero and icon (`quill16` `assets/hero.svg`): navy `#0a1230` and `#14142a`, gold `#f0a830`,
+/// cream `#fbf7ea`.
 pub const QUILL_NAVY: [u32; 9] = [
-	0xF3EEDC, 0xE2DCC8, 0xB9B6C4, 0x8A90A8, 0x5B6684, 0x34405E, 0x222D48, 0x161E33, 0x0B1020,
+	0xFBF7EA, 0xFFF4D6, 0xC4C6D0, 0x8A90A8, 0x5B6684, 0x2B2F4A, 0x202030, 0x14142A, 0x0A1230,
 ];
-pub const QUILL_GOLD: u32 = 0xE0B040;
+pub const QUILL_GOLD: u32 = 0xF0A830;
 
 /// The palette ids stored in the `Palette` setting.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

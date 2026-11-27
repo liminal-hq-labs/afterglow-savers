@@ -106,9 +106,10 @@ pub enum Key {
 	Duration,
 	Savers,
 	Acts,
+	Sun,
 }
 
-pub const KEY_COUNT: usize = Key::Acts as usize + 1;
+pub const KEY_COUNT: usize = Key::Sun as usize + 1;
 
 /// How the dialog shows a field.
 #[derive(Clone, Copy, Debug)]
@@ -212,6 +213,7 @@ const MAZE: &[Field] = &[
 const TWILIGHT: &[Field] = &[
 	f(Key::Atmosphere, "Atmosphere", "Atmosphere", 0, 100, 70, Control::Slider),
 	f(Key::Moons, "Moons", "Moons", 0, 2, 2, Control::Choice(MOONS)),
+	f(Key::Sun, "Sun", "Show the sun", 0, 1, 1, Control::Check),
 ];
 const INK: &[Field] = &[
 	f(Key::Thickness, "Thickness", "Ink thickness", 0, 100, 50, Control::Slider),
