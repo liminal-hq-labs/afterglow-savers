@@ -23,9 +23,11 @@
 pub mod compare;
 pub mod context;
 pub mod finish;
+pub mod present;
 pub mod readback;
 pub mod twilight;
 
 pub use context::{Gpu, GpuError, adapter_names};
 pub use finish::Finish;
+pub use present::Presenter;
 pub use twilight::{TwilightRenderer, finish_params, shared_for_gpu};
