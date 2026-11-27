@@ -1,0 +1,32 @@
+# The Linux edition of Afterglow Twilight: a fullscreen wgpu window, an xscreensaver hack, and sound through cpal. Host only.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "afterglow-twilight-gpu"
+description = "Afterglow Twilight on the graphics card for Linux (X11 and Wayland): fullscreen saver, xscreensaver hack and preview"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "afterglow-twilight-gpu"
+path = "src/main.rs"
+
+[dependencies]
+savers-core = { path = "../../crates/savers-core" }
+savers-gpu = { path = "../../crates/savers-gpu" }
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "vulkan", "gles", "wgsl"] }
+# X11 and Wayland only; no client-side decorations (the saver is borderless and fullscreen), so no software-rendered title bar.
+winit = { version = "0.30.13", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen"] }
+# ALSA, which PipeWire and PulseAudio both serve through their ALSA plug-ins.
+cpal = { version = "0.17.3", default-features = false }
+# Already in winit's tree: reads the size of the window xscreensaver gives us.
+x11rb = "0.13"
+
+[lints]
+workspace = true
