@@ -133,13 +133,14 @@ def main() -> int:
 	)
 	print(f"guest: QEMU pid {qemu.pid}")
 	try:
-		# Logon, then the script: 20 s, the applet for 40 s, then each saver for `dwell` seconds and 3 s between.
-		schedule = [("desktop", 75), ("applet", 100)]
-		at = 120
+		# Measured in the Afterglow image with KVM: the start-up script begins about 50 s after power-on; it waits 20 s, shows the
+		# applet for 40 s, then runs each saver for `dwell` seconds with 3 s between (about dwell + 4.5 s each, with taskkill).
+		schedule = [("desktop", 62), ("applet", 85)]
+		at = 110
 		for name in savers:
 			schedule.append((name.lower().replace(".scr", "") + "-a", at + 10))
 			schedule.append((name.lower().replace(".scr", "") + "-b", at + args.dwell - 6))
-			at += args.dwell + 4
+			at += args.dwell + 4.5
 		start = time.monotonic()
 		for label, when in schedule:
 			while time.monotonic() - start < when:
