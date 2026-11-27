@@ -1,0 +1,9 @@
+# Pins the Rust toolchain; rust-src is for the Win32 builds' -Zbuild-std.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[toolchain]
+channel = "1.98.0"
+components = ["rustfmt", "clippy", "rust-src", "llvm-tools"]
+targets = ["x86_64-unknown-linux-gnu"]

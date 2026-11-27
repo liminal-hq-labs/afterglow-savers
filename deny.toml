@@ -1,0 +1,22 @@
+# Licence and supply-chain policy. The savers expect no dependencies at all; this guards the day one appears.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[graph]
+all-features = true
+
+[licenses]
+confidence-threshold = 0.9
+allow = ["Apache-2.0", "MIT"]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies between workspace crates carry no version until a release flow exists.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

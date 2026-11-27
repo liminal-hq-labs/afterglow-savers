@@ -1,0 +1,7 @@
+# rustfmt settings for Afterglow Screensavers: hard tabs and a 130-column width.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+hard_tabs = true
+max_width = 130

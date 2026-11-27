@@ -1,0 +1,20 @@
+# Planning notes stay local; decisions live in docs/decisions.md.
+/PLAN.md
+
+# Rust build output
+/target/
+/platforms/*/target/
+/platforms/*/dist/
+
+# Python bytecode
+__pycache__/
+
+# Preview output and review frames
+/previews/
+/shots/
+
+# Editor and OS clutter
+.DS_Store
+*.swp
+.vscode/
+.idea/
