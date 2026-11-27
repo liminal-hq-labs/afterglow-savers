@@ -32,6 +32,7 @@ The first letter after a `/` or `-`, in either case, picks the mode, as `scrnsav
 - The scene is drawn by the CPU into a 32-bit frame at the **render scale** (100, 75, 50 or 25% of the window in each direction), finished (§6), and shown with GDI `StretchDIBits` (SAV-D2).
 - Animation follows elapsed time, scaled by the **speed** setting, so a slow machine shows fewer frames of the same motion. A frame that took longer than 100 ms advances time by at most 100 ms.
 - Frames are capped at **Max frames per second** (default 30); the program sleeps for the rest of each frame, so it does not take the whole CPU at idle priority.
+- **Threads** (SAV-D51, SAV-D52): the x86-64 build shares the frame's passes between processors, in a full-screen run of at least a million pixels, on up to seven worker threads at idle priority besides the drawing thread (one fewer than the machine's processors). The frame is the same byte for byte with any number of threads. A `Threads` value in the saver's key (not in the dialog) overrides the count: 1 for none, 2 to 8 for that many in all; missing or 0 is automatic. The Pentium build, the preview and the dialog use one thread.
 - The same seed, settings, size and time give the same frame (SAV-D6). A seed setting of 0 means a new seed each run, taken from the tick count and the cursor position.
 
 ## 4. Full screen (`/s`)
