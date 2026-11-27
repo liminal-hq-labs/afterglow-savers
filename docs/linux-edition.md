@@ -53,7 +53,7 @@ Add this to `programs:` in `~/.xscreensaver` (the installer prints it with the r
 
 xscreensaver runs the command with `-root` and `XSCREENSAVER_WINDOW` set, or with `-window-id ID` in its settings preview; the wrapper script unsets `WAYLAND_DISPLAY` and runs the program, which draws into that window. Options after `-root` are the program's own (`--help`). The hack is silent unless `--sound` is given.
 
-`afterglow-twilight.xml` is the settings dialog. xscreensaver reads its XML from its own config folder (usually `/usr/share/xscreensaver/config/`), which needs administrator rights, so the installer leaves that one copy to you; without it the hack still runs, just with no dialog. The controls map to options as follows:
+`afterglow-twilight.xml` is the settings dialog. xscreensaver reads its XML from its own config folder (usually `/usr/share/xscreensaver/config/`), which needs administrator rights, so the installer leaves that one copy to you. Copy it as `afterglow-twilight-xscreensaver.xml`: xscreensaver finds a dialog by the command's program name, not the saver's. Without it the hack still runs, just with no dialog. The packages planned in [linux-packages.md](linux-packages.md) install it in place (SAV-D64). The controls map to options as follows:
 
 | Control | Option |
 | --- | --- |
@@ -109,6 +109,6 @@ A 4K fullscreen window on lavapipe at 50% scale held 21 fps, which includes copy
 
 ## Not covered
 
-- Only the primary monitor is covered. A second display stays as it was (SAV-D44 notes the swap).
+- Only the primary monitor is covered. A second display stays as it was; one window per monitor is planned in [linux-packages.md](linux-packages.md) (SAV-D70 to SAV-D74).
 - On Wayland the window mode has no title bar (client-side decorations are left out of winit so a saver does not ship a software-rendered one); fullscreen and the hack do not need one.
 - The program has been run on X11 under Xvfb. Wayland, the real Radeon (other than headless), PipeWire, GNOME's idle helper and KDE have not been exercised from here, and nothing was opened on the owner's desktop on purpose.

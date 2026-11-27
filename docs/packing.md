@@ -22,7 +22,7 @@ WP-PACK-6  quill16           remix: Ghostwriter, parts, state  needs WP-PACK-4 m
 WP-PACK-7  quill16           installer components              needs S only (in parallel with 3 to 6); Display Properties listing needs the installer's {windows} and {system}
 ```
 
-Three packages stand apart from that chain and need none of it: WP-SCROLL (the Cracktro's scroller words off by default, with a setting), WP-LINUX-PKG (deb, rpm and PKGBUILD for the GPU Twilight) and WP-GPU-MONITORS (one GPU Twilight window per monitor). They are briefed at the end of this file and are not part of this build-ordered plan.
+Three packages stand apart from that chain and need none of it: WP-SCROLL (the Cracktro's scroller words off by default, with a setting), WP-LINUX-PKG (deb, rpm and PKGBUILD for the GPU Twilight) and WP-GPU-MONITORS (one GPU Twilight window per monitor). They are planned, with a fourth, WP-LINUX-DESKTOP, in [linux-packages.md](linux-packages.md), and are not part of this build-ordered plan.
 
 At most three builders at once: 1 → 2 in this repository while 3 runs in reactos-liminal; then 4 and 7 together; then 5 and 6.
 
@@ -233,7 +233,7 @@ The owner's answers are in place; the file named swaps each one.
 | ReactOS's own savers beside Afterglow's in the full image | Kept in the full image, removed from the compact | A trim extra in `recipes/afterglow.toml` naming the eight stock `.scr` files |
 | Both Ghostwriter editions on Windows 95 | Both offered, unticked | `targets` of `ghostwriter16` in `installer/components.toml` |
 | The Cracktro's scroller words | Off by default; a setting turns them on and a text field takes your own words (WP-SCROLL) | `savers_core::settings` defaults |
-| Linux packages and one window per monitor for the GPU Twilight | Queued (WP-LINUX-PKG, WP-GPU-MONITORS) | The two briefs below |
+| Linux packages and one window per monitor for the GPU Twilight | Planned (WP-LINUX-PKG, WP-GPU-MONITORS, WP-LINUX-DESKTOP) | [linux-packages.md](linux-packages.md), its owner decisions |
 
 ## Sonnet briefs
 
@@ -374,61 +374,6 @@ Evidence w95-*.png and w31-*.png to ~/Documents/Liminal HQ/Afterglow/Savers/imag
 Commits, PR, cleanup and report as in WP-PACK-1's brief (branch feat/installer-ghostwriter).
 ```
 
-## WP-SCROLL — the Cracktro's scroller, off by default (afterglow-savers, areas `core` and `win32`)
+## WP-SCROLL, WP-LINUX-PKG and WP-GPU-MONITORS
 
-Small and separate; WP-PACK-1 does not need it. Today the Cracktro scrolls the Afterglow message along its lower third (`Message`, 2,000 characters, SPEC section 7). The owner wants the words off until asked for.
-
-**Finish line.** A new setting (`Scroller`, `REG_DWORD`, 0 off or 1 on, default 0) decides whether the sine scroller shows words. Off, the scene plays as now without the scroller (the copper wave motion stays where the design wants it, with no letters); on, it scrolls `Message`. `Message` is a text field in the Afterglow dialog, enabled only when the scroller is on, and its default text stays the current Afterglow message (the defaults table in SPEC). The Collection's Cracktro part follows the same setting. Windows, Linux and the host preview agree.
-
-**Files owned.** `crates/savers-core` (`settings.rs`, the Cracktro scene, goldens that change because the default is off, say which), `platforms/win32` (the dialog's Look page: a checkbox and a text field, string table), `docs/settings-dialog.md`, `docs/scenes.md`, `SPEC.md`, `docs/decisions.md`.
-
-**Tests.** `make check`; goldens updated with a note in the commit of every frame that changed and why; a unit test that `Message` round-trips and is used only when `Scroller` is 1; Wine screendumps of the dialog with the box off and on.
-
-**Brief.**
-
-```text
-Sonnet builder, afterglow-savers. Package WP-SCROLL in docs/packing.md (read it, SPEC.md section 7 and 8, docs/settings-dialog.md,
-docs/scenes.md, crates/savers-core/src/scenes/cracktro.rs). Worktree: git -C ~/source/liminal-hq-labs/afterglow-savers worktree
-add -b feat/scroller-off ~/source/worktrees/afterglow-savers/scroller-off origin/main. Add the Scroller setting (default off) and the
-dialog's checkbox and Message text field (enabled only when on); keep the built-in default text. Update SPEC, a decision, goldens
-that change. Gate: make check; Wine screendumps under your own Xvfb (DISPLAY set on every command, WAYLAND_DISPLAY unset, never :0,
-no pkill). Commits, PR and report as WP-PACK-1's brief.
-```
-
-## WP-LINUX-PKG — packages for the GPU Twilight (afterglow-savers, area `linux`)
-
-**Finish line.** `make packages` (a script under `platforms/linux/packaging/`) builds a `.deb`, an `.rpm` and an Arch `PKGBUILD` (with a `.SRCINFO`) for `afterglow-twilight-gpu`, installing the program, `afterglow-twilight-xscreensaver`, the desktop launcher and `afterglow-twilight.xml` into xscreensaver's own config folder (`/usr/share/xscreensaver/config/`), so the hack shows its settings dialog without the administrator step `docs/linux-edition.md` mentions today. The packages depend on the graphics and sound libraries the program links (Vulkan loader, ALSA) and suggest xscreensaver; they put nothing under the user's home.
-
-**Files owned.** `platforms/linux/packaging/` (new), `docs/linux-edition.md` (Packages section), `docs/testing.md`, `.github/workflows/ci.yml` (one job that builds the three and lints them), `docs/decisions.md`.
-
-**Tests.** Build in a Debian and a Fedora container and an Arch container (docker), install each package there, and check `afterglow-twilight-gpu --help`, the XML in place and `dpkg -c`, `rpm -qlp` and `pacman -Ql` file lists; `lintian` and `rpmlint` output reported; the packages' versions come from the crate version.
-
-**Brief.**
-
-```text
-Sonnet builder, afterglow-savers. Package WP-LINUX-PKG in docs/packing.md (read it, docs/linux-edition.md, platforms/linux/install.sh,
-platforms/linux/xscreensaver). Worktree: git -C ~/source/liminal-hq-labs/afterglow-savers worktree add -b feat/linux-packages
-~/source/worktrees/afterglow-savers/linux-packages origin/main. Build deb, rpm and PKGBUILD for the GPU Twilight, installing the
-xscreensaver XML to /usr/share/xscreensaver/config/. Containers via docker only; no sudo on the host, no installs on the host.
-Never push tags or publish. Gate: make check-fast, packaging tests in the containers, markdownlint. Commits, PR and report as
-WP-PACK-1's brief.
-```
-
-## WP-GPU-MONITORS — one window per monitor (afterglow-savers, area `linux`)
-
-**Finish line.** `afterglow-twilight-gpu` opens one borderless fullscreen window on every monitor (today only the primary monitor is covered, `docs/linux-edition.md`), each drawing its own view of the scene (a different seed, camera path and time offset, so the monitors never repeat each other) with options that can differ per monitor in the settings file (`[monitor.<name>]` tables overriding the shared values: palette, speed, render scale, sun) and, where they apply, on the command line (`--monitor NAME:KEY=VALUE`). Input on any monitor ends the saver. One monitor behaves exactly as now. Wayland and X11 both; `--monitors primary` restores the old behaviour.
-
-**Files owned.** `platforms/linux/src`, `crates/savers-gpu` (only what per-view parameters need), `docs/linux-edition.md`, `docs/gpu-twilight.md`, `SPEC.md` (the Linux settings), `docs/decisions.md`.
-
-**Tests.** `make check-gpu` extended on its own Xvfb with two virtual screens (Xinerama or two RandR monitors): two windows, different frames, the exit rules; a unit test for the settings merge; a single-monitor run byte-identical to today's.
-
-**Brief.**
-
-```text
-Sonnet builder, afterglow-savers. Package WP-GPU-MONITORS in docs/packing.md (read it, docs/linux-edition.md, docs/gpu-twilight.md,
-platforms/linux/src, crates/savers-gpu). Worktree: git -C ~/source/liminal-hq-labs/afterglow-savers worktree add -b feat/gpu-monitors
-~/source/worktrees/afterglow-savers/gpu-monitors origin/main. One window per monitor, a different view per window, per-monitor
-option tables in the settings file, a flag to restore the primary-only behaviour. Test on your own Xvfb with two RandR monitors
-(DISPLAY set on every command, WAYLAND_DISPLAY unset, never :0, no pkill). Gate: make check, make check-gpu. Commits, PR and report
-as WP-PACK-1's brief.
-```
+Planned together, with WP-LINUX-DESKTOP, in [linux-packages.md](linux-packages.md): decisions SAV-D63 to SAV-D76, the install layout, the build pipeline, the tests, the risks, the owner decisions and the Sonnet briefs.
