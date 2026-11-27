@@ -4,10 +4,10 @@ The build-ordered work packages that put the Afterglow savers into the Afterglow
 
 ## The finish line
 
-- The Afterglow full image (`recipes/afterglow.toml`) and the compact image (`recipes/afterglow-compact.toml`) list "Afterglow Collection", "Afterglow Cracktro", "Afterglow Ink", "Afterglow Maze" and "Afterglow Twilight" in Display Properties > Screen Saver, the Collection selected after ten minutes; each one previews in the monitor, opens the Afterglow settings dialog from Settings, runs full screen from Preview and plays its score at `Volume` 28.
-- Neither image carries Quill Ghostwriter.
+- The Afterglow full image (`recipes/afterglow.toml`) and the compact image (`recipes/afterglow-compact.toml`) list "Afterglow Collection", "Afterglow Cracktro", "Afterglow Ink", "Afterglow Maze" and "Afterglow Twilight" in Display Properties > Screen Saver, with no saver selected, so the list shows "(None)" until someone picks one; each one previews in the monitor, opens the Afterglow settings dialog from Settings, runs full screen from Preview and plays its score at `Volume` 28.
+- Neither image carries Quill Ghostwriter. The full image keeps ReactOS's own screensavers beside the Afterglow five; the compact image has the five and no others.
 - The Quill remix lists the same five plus "Quill Ghostwriter", none of them selected, and its web demo's parts and saved state are rebuilt over the new disk.
-- Quill's Windows 95 installer offers "Quill Ghostwriter screensaver" and "Quill Ghostwriter screensaver, Windows 3.x edition", and its Windows 3.x installer the second, all unticked; a default install copies neither.
+- Quill's Windows 95 installer offers "Quill Ghostwriter screensaver" and "Quill Ghostwriter screensaver, Windows 3.x edition", and its Windows 3.x installer the second, all unticked; a default install copies neither. Until liminal-installer has `{windows}` and `{system}` placeholders, neither shows in Display Properties (WP-PACK-7's dependency); with them, both do.
 - Every saver is built from source at a pinned commit of this repository, and its output is pinned by SHA-256 wherever it lands.
 
 ## Order
@@ -19,8 +19,10 @@ WP-PACK-3  reactos-liminal   multi-output builds from a pin    ─┤  (in paral
 WP-PACK-4  reactos-liminal   recipe wiring at S                ◄┘  needs S and WP-PACK-3
 WP-PACK-5  reactos-liminal   images booted, sizes, evidence    on WP-PACK-4's branch, same pull request
 WP-PACK-6  quill16           remix: Ghostwriter, parts, state  needs WP-PACK-4 merged
-WP-PACK-7  quill16           installer components              needs S only (in parallel with 3 to 6)
+WP-PACK-7  quill16           installer components              needs S only (in parallel with 3 to 6); Display Properties listing needs the installer's {windows} and {system}
 ```
+
+Three packages stand apart from that chain and need none of it: WP-SCROLL (the Cracktro's scroller words off by default, with a setting), WP-LINUX-PKG (deb, rpm and PKGBUILD for the GPU Twilight) and WP-GPU-MONITORS (one GPU Twilight window per monitor). They are briefed at the end of this file and are not part of this build-ordered plan.
 
 At most three builders at once: 1 → 2 in this repository while 3 runs in reactos-liminal; then 4 and 7 together; then 5 and 6.
 
@@ -30,7 +32,7 @@ At most three builders at once: 1 → 2 in this repository while 3 runs in react
 - **Git.** A topic branch, small Conventional Commits written to a file and committed with `git commit -F`, a bold-label markdown body hard-wrapped at about 72 columns, ending `Co-Authored-By:` with the builder's own model. Files staged by name; never `git add -A` or `git commit -a`. Push only the package's own branch, open the pull request, never merge.
 - **Pull request.** Capitalized imperative title; `## Summary` of bold-led bullets; `## Test plan` of `- [x]` and `- [ ]` items naming the commands, ending with an unchecked `- [ ] Not verified: …`.
 - **Displays.** Wine and DOSBox-X run on an Xvfb of the package's own, with `DISPLAY=:NN` set explicitly on every command that needs one and `WAYLAND_DISPLAY` unset; QEMU runs with `-display none` and its own monitor socket. Never capture the host screen, never send keys or pointer moves to `:0`, never `pkill` or `killall`: stop only a PID you started.
-- **Cleanup.** One removal per command with a full literal path: `rm -r /home/scott/.cache/afterglow-savers/pack-guest`, `git worktree remove /home/scott/source/worktrees/afterglow-savers/pack-ci`, `git worktree prune`, `git branch -d ci/pack-build`. No globs, `$(...)`, variables or loops in a removal.
+- **Cleanup.** One removal per command with a full literal path: `rm -r /home/scott/.cache/afterglow-savers/pack-guest`, `git worktree remove /home/scott/source/worktrees/afterglow-savers/pack-ci`, `git worktree prune`, `git branch -d feat/pack-build`. No globs, `$(...)`, variables or loops in a removal.
 - **Scratch.** Guest disk copies and build output in `~/.cache/<repo>/…` (check `df -h /home` and `free -g` first); evidence worth keeping in `~/Documents/Liminal HQ/Afterglow/Savers/images/`.
 - **Heavy tools** one at a time, `CARGO_BUILD_JOBS=4`.
 
@@ -38,7 +40,7 @@ At most three builders at once: 1 → 2 in this repository while 3 runs in react
 
 **Finish line.** `scripts/build-scr.sh OUT_DIR` builds the six i586 `.scr` files from a clean source tree (a `git archive` of the commit, as GitHub serves it) into `OUT_DIR`, with `OUT_DIR/SHA256SUMS`, byte-identical to `platforms/win32/build.sh i586`; CI builds, checks and publishes those sums on every pull request.
 
-**Files owned.** `scripts/build-scr.sh` (new), `scripts/check-archive-build.sh` (new), `.github/workflows/ci.yml`, `Makefile` (a `build-scr` target and `check` calling the archive check), `docs/testing.md`, `docs/reactos-integration.md` (the contract section), `docs/progress.md`.
+**Files owned.** `scripts/build-scr.sh` (new), `scripts/check-archive-build.sh` (new), `.github/workflows/ci.yml`, `Makefile` (`build-scr` and `check-archive` targets, and `check` calling the archive check), `docs/testing.md`, `docs/reactos-integration.md` (the contract section), `docs/progress.md`.
 
 **Must not touch.** `crates/`, `platforms/win32/src`, `platforms/win16/src`, the size guards, any scene's look or golden.
 
@@ -48,7 +50,7 @@ At most three builders at once: 1 → 2 in this repository while 3 runs in react
 - It must work from an extracted GitHub tar: `platforms/win32/crates` is a relative symlink, which the archive keeps; the script must not depend on `.git` (no `git describe`, no `git ls-files`).
 - `scripts/check-archive-build.sh` makes `git archive --format=tar HEAD` into a fresh folder under `~/.cache/afterglow-savers/`, extracts it, runs `build-scr.sh` there with its own `CARGO_TARGET_DIR`, and compares the sums with a build in the working tree. It removes its folder with one literal `rm -r` in its `trap`.
 
-**CI** (one job per check, the shared `ci-rust` image pinned by the digest already in `ci.yml`, `rustup toolchain install` from `rust-toolchain.toml`):
+**CI** (one job per check, the shared `ci-rust` image pinned by the digest already in `ci.yml`, `rustup toolchain install 1.98.0` with `rust-src` and `llvm-tools`):
 
 - `win32-i586` "Win32 build (Pentium)": `bash platforms/win32/build.sh i586`, `bash platforms/win32/check.sh i586` (structure, imports, Pentium, sizes).
 - `win32-x86_64` "Win32 build (x86-64)": the same for x86-64.
@@ -64,7 +66,7 @@ At most three builders at once: 1 → 2 in this repository while 3 runs in react
 
 ## WP-PACK-2 — the savers in a ReactOS guest, dialog included (afterglow-savers, areas `repo` and `win32`)
 
-**Finish line.** `scripts/guest/guest.py` drives, in a copy of the Afterglow image under QEMU: the Screen Saver list, each saver's monitor preview, its Settings (the Afterglow dialog, not the plain fallback), Cancel, OK with one change, Preview full screen and a key to end it, and the Collection starting by itself after a one-minute timeout; it records the AC97 output and checks each score is present and quiet. A `--in-image` mode runs the same checks over the `.scr` files an image already carries, without writing any, for WP-PACK-5 and WP-PACK-6. Anything that fails in ReactOS is fixed in the `.scr` in this package, before the commit is pinned.
+**Finish line.** `scripts/guest/guest.py` drives, in a copy of the Afterglow image under QEMU: the Screen Saver list, each saver's monitor preview, its Settings (the Afterglow dialog, not the plain fallback), Cancel, OK with one change, Preview full screen and a key to end it, and the Collection starting by itself after a one-minute timeout that the check sets in its own copy (the images select no saver, so the run writes `SCRNSAVE.EXE` and `ScreenSaveTimeOut` 60 itself); it records the AC97 output and checks each score is present and quiet. A `--in-image` mode runs the same checks over the `.scr` files an image already carries, without writing any, for WP-PACK-5 and WP-PACK-6. Anything that fails in ReactOS is fixed in the `.scr` in this package, before the commit is pinned.
 
 **Files owned.** `scripts/guest/guest.py`, `scripts/guest/` (new helpers), `platforms/win32/src` only for fixes the guest run shows (one fix, one commit, with its own test where the host can test it), `docs/settings-dialog.md` ("Not yet checked"), `docs/reactos-scr.md` (anything learned), `docs/progress.md`, `SPEC.md` (only if behaviour changes).
 
@@ -72,10 +74,10 @@ At most three builders at once: 1 → 2 in this repository while 3 runs in react
 
 **What the guest run checks** (the image's settings: 1024 × 768, 32 bits, the Afterglow visual style):
 
-- The list holds the five names by their string 1 (and the stock ReactOS savers in the full image); `AGQUILL.SCR`, when written, adds "Quill Ghostwriter".
+- The list holds the five names by their string 1 (and the stock ReactOS savers in the full image, none in the compact), with "(None)" selected in an image as built; `AGQUILL.SCR`, when written, adds "Quill Ghostwriter".
 - Settings opens the Afterglow dialog owned by Display Properties (`/c:<hwnd>`), with its banner drawn on the first tick, the swatches, the live preview, and Sound and Volume at the top of Look reading on and 28. Cancel writes nothing under `HKCU\Software\Liminal HQ\Afterglow Screensavers`; OK writes the saver's key; Display Properties restarts the monitor preview with the change.
 - Preview runs full screen with no pointer, a key ends it, and the monitor preview comes back.
-- With `ScreenSaveTimeOut` 60 in the copy, Winlogon starts the Collection by itself; a key ends it.
+- The run selects the Collection and sets `ScreenSaveActive` 1 and `ScreenSaveTimeOut` 60 in the copy (the image has no saver selected, SAV-D59); Winlogon starts the Collection by itself, and a key ends it.
 - The AC97 capture: each saver's score present, with an RMS well below full scale (the same check `scripts/wine-audio.sh` makes), and silence from the preview and the dialog.
 
 **Tests.** `make check`; `python3 -I scripts/guest/guest.py --scr platforms/win32/dist/i586 --shots ~/.cache/afterglow-savers/pack-guest/shots --audio ~/.cache/afterglow-savers/pack-guest/guest.wav` (KVM, no display); `bash scripts/smoke-wine.sh` and `bash scripts/wine-audio.sh` under the package's own Xvfb.
@@ -103,11 +105,11 @@ At most three builders at once: 1 → 2 in this repository while 3 runs in react
 
 ## WP-PACK-4 — the recipe wiring at S (reactos-liminal)
 
-**Finish line.** `recipes/afterglow.toml` builds the savers from S and writes the five files to `ReactOS/system32`; a named registry file `screensaver-afterglow` selects the Collection after ten minutes; the compact recipe inherits both; both locks are current; CI builds the savers on every pull request.
+**Finish line.** `recipes/afterglow.toml` builds the savers from S and writes the five files to `ReactOS/system32`; no registry file selects a saver, so both images list the five in Display Properties with none chosen; the compact recipe inherits the files and its trim removes ReactOS's own savers; both locks are current; CI builds the savers on every pull request.
 
-**Files owned.** `recipes/afterglow.toml`, `recipes/afterglow.lock.json`, `recipes/afterglow-compact.lock.json`, `guest/reg/screensaver-afterglow.reg` (new), `reactos_liminal/recipe.py` (the new named file only), `.github/workflows/ci.yml` (a job), `.github/workflows/build.yml` (the savers tar's cache and `--require`), `.github/workflows/release.yml` (the savers source in the corresponding source, if its source job lists inputs), `SPEC.md`, `docs/recipes.md`, `docs/decisions.md`, `NOTICE.md`, `tests/` (the reg file and trim tests).
+**Files owned.** `recipes/afterglow.toml`, `recipes/afterglow.lock.json`, `recipes/afterglow-compact.lock.json`, `.github/workflows/ci.yml` (a job), `.github/workflows/build.yml` (the savers tar's cache and `--require`), `.github/workflows/release.yml` (the savers source in the corresponding source, if its source job lists inputs), `SPEC.md`, `docs/recipes.md`, `docs/decisions.md`, `NOTICE.md`, `tests/` (the trim tests).
 
-**Must not touch.** The `[builds]` code (WP-PACK-3), `tools/afterfetch`, the Afterglow pin, `profiles/base.txt`.
+**Must not touch.** The `[builds]` code (WP-PACK-3), `tools/afterfetch`, the Afterglow pin, `profiles/base.txt`, `guest/reg/` (no new registry file: SAV-D59).
 
 **The recipe.**
 
@@ -130,24 +132,9 @@ destination = "ReactOS/system32/AGMAZE.SCR"
 # and one entry each for AGCRACK, AGTWILIT, AGINK and AGCOLLCT; AGQUILL.SCR is built but never written by these recipes
 ```
 
-`settings.reg_files` gains `"screensaver-afterglow"` after `"quiet"`. The file:
+**No saver is selected** (SAV-D59). The recipes add no registry file: `quiet.reg` stays the only screensaver setting, so `ScreenSaveActive` is `"0"` and `SCRNSAVE.EXE` is absent, and the Screen Saver list shows "(None)" until someone picks one. The savers' own settings get no registry entries either: `Sound` 1, `Volume` 28, palette Dusk and the rest are the program's defaults (SAV-D56).
 
-```text
-Windows Registry Editor Version 5.00
-
-; The Afterglow Collection after ten minutes, no password. Applied once by apply-settings.cmd, after quiet.reg, which it overrides.
-;
-; (c) Copyright 2026 Liminal HQ, Scott Morris
-; SPDX-License-Identifier: Apache-2.0 OR MIT
-
-[HKEY_CURRENT_USER\Control Panel\Desktop]
-"SCRNSAVE.EXE"="C:\\ReactOS\\system32\\AGCOLLCT.SCR"
-"ScreenSaveActive"="1"
-"ScreenSaveTimeOut"="600"
-"ScreenSaverIsSecure"="0"
-```
-
-The savers' own settings get no registry entries: `Sound` 1, `Volume` 28, palette Dusk and the rest are the program's defaults (SAV-D56). A test checks that the `base` trim profile names none of the `AG*.SCR` files, so the compact image keeps them.
+**What each image keeps.** The `base` trim profile removes ReactOS's own eight `.scr` files (`profiles/base.txt`), which suits the compact image. The full image keeps them beside the Afterglow five, so its recipe needs a trim that spares the stock files (the full image removes nothing, SAV-D55); the compact image inherits the five Afterglow files and keeps them, and a test checks that no trim profile names any `AG*.SCR` file.
 
 **CI.** A job "Afterglow savers" in `ci.yml` (the `ci-rust` image by digest, `rustup toolchain install 1.98.0 --component rust-src,llvm-tools`): `./rl build recipes/afterglow.toml afterglow-savers --work "$RUNNER_TEMP/rl-work"`, which fetches the tar at S, builds and checks the five sums. `build.yml` caches the savers tar by commit and sum, as it caches Afterglow's, and verifies it with `--require`.
 
@@ -155,7 +142,7 @@ The savers' own settings get no registry entries: `Sound` 1, `Volume` 28, palett
 
 ## WP-PACK-5 — the images booted, sizes and evidence (reactos-liminal, on WP-PACK-4's branch)
 
-**Finish line.** The full and compact images are built locally with the savers, booted in QEMU, and every check of WP-PACK-2 passes in each; the size cost is measured and written into `docs/recipes.md`; the evidence is in the pull request.
+**Finish line.** The full and compact images are built locally with the savers, booted in QEMU, and every check of WP-PACK-2 passes in each, and the full image still lists ReactOS's own savers where the compact one does not; the size cost is measured and written into `docs/recipes.md`; the evidence is in the pull request.
 
 **Files owned.** `docs/recipes.md` (a short "Screensavers" section with the sizes), the pull request text. Fixes found here go back to this repository (a `fix:` pull request, then a new S) or to WP-PACK-4's files, never patched in place.
 
@@ -165,13 +152,13 @@ The savers' own settings get no registry entries: `Sound` 1, `Volume` 28, palett
 
 1. `./rl install recipes/afterglow.toml --work ~/.cache/reactos-liminal` (or the cached golden disk), `./rl image recipes/afterglow.toml`, `./rl image recipes/afterglow-compact.toml --golden <the base golden disk>`, `./rl audit` on both.
 2. `./rl parts` for both, before (main) and after (the branch), and the disk's used bytes before and after: report the five files' bytes (about 1.0 MB, `docs/progress.md` sizes), the change in total compressed parts (each file compresses to about 45% at zstd 19; expect about 0.45 MB) and the number of parts that changed.
-3. Boot each image with afterglow-savers' `scripts/guest/guest.py --in-image --source <the image>` (WP-PACK-2), headless with KVM: the list, the six dialogs' worth of checks for the five savers, Preview, the idle start after ten minutes (or a one-minute copy), and the AC97 capture.
+3. Boot each image with afterglow-savers' `scripts/guest/guest.py --in-image --source <the image>` (WP-PACK-2), headless with KVM: the list, the six dialogs' worth of checks for the five savers, Preview, the idle start (the copy is given the Collection and a one-minute timeout, since no image selects one), and the AC97 capture.
 
 **Evidence** in `~/Documents/Liminal HQ/Afterglow/Savers/images/`: `full-list.png`, `full-dialog-<saver>.png`, `full-fullscreen-<saver>.png`, `full-idle-collection.png`, `compact-list.png`, `compact-dialog-collection.png`, and a sizes table in the pull request.
 
 ## WP-PACK-6 — the Quill remix (quill16)
 
-**Finish line.** The remix (`site/try-reactos/qagrr/qagrr.toml`) pins reactos-liminal at WP-PACK-4's merge, inherits the five savers, adds `AGQUILL.SCR`, selects none; its parts and saved state are rebuilt and checked; the page still boots to Quill with the demo letter.
+**Finish line.** The remix (`site/try-reactos/qagrr/qagrr.toml`) pins reactos-liminal at WP-PACK-4's merge, inherits the five savers, adds `AGQUILL.SCR`, selects none (as the images do, SAV-D59); its parts and saved state are rebuilt and checked; the page still boots to Quill with the demo letter.
 
 **Files owned.** `site/try-reactos/qagrr/qagrr.toml`, `site/try-reactos/qagrr/reactos-liminal.pin`, `site/try-reactos/README.md`, the remix's docs and decisions, `.github/workflows/reactos-qagrr.yml` only if the savers build needs the toolchain components there (`rust-src`, `llvm-tools`).
 
@@ -188,7 +175,7 @@ source = "built:afterglow-savers/AGQUILL.SCR"
 destination = "ReactOS/system32/AGQUILL.SCR"
 ```
 
-The remix's `reg_files` list replaces the base's named files, so it does not get `screensaver-afterglow` and `quiet.reg` keeps the screensaver off: the web demo never starts a saver by itself (SAV-D57). The Windows 3.x `QUILLGW.SCR` is not added (SAV-D37).
+No registry file selects a saver, and `quiet.reg` keeps the screensaver off: the web demo never starts a saver by itself (SAV-D57). The Windows 3.x `QUILLGW.SCR` is not added (SAV-D37).
 
 **Tests.** `build-with-rl.sh --dry-run`, `--check-trim`, a full build, `build-state.sh DIST`, `check-state.sh DIST`; a QEMU boot of the remix disk with `guest.py --in-image` showing "Quill Ghostwriter" in the list, unselected, and its dialog; the parts' size change in the manifest.
 
@@ -196,7 +183,9 @@ The remix's `reg_files` list replaces the base's named files, so it does not get
 
 ## WP-PACK-7 — Quill's installers (quill16)
 
-**Finish line.** Quill's Windows 95 installer offers the two Ghostwriter components and the Windows 3.x installer one, all unticked, built from S with the sums checked; a ticked install copies the file and adds a "Quill Ghostwriter" shortcut that runs it; a default install copies nothing of it; uninstall removes what was installed. No liminal-installer change.
+**Finish line.** Quill's Windows 95 installer offers the two Ghostwriter components and the Windows 3.x installer one, all unticked, built from S with the sums checked; a ticked install copies the file and adds a "Quill Ghostwriter" shortcut that runs it; a default install copies nothing of it; uninstall removes what was installed. No liminal-installer change in this package.
+
+**Dependency: Display Properties needs a new installer feature.** The owner wants Ghostwriter to show in Display Properties > Screen Saver, which needs the file in the Windows or system folder. That waits for liminal-installer to gain `{windows}` and `{system}` path placeholders in every runtime, its receipts and its uninstall (SAV-D58); this package ships with `{install}` and the shortcut, and a follow-up one-line change to `to = "{system}/"` (and `"{windows}/"` for the Windows 3.x edition) lands once that feature does. The follow-up does not start until the liminal-installer feature is merged.
 
 **Files owned.** `installer/components.toml`, `installer/ghostwriter.pin` (new: S, the tar's sum, the sums of `AGQUILL.SCR` and `QUILLGW.SCR`), `installer/tools/fetch-ghostwriter.sh` (new), `installer/tools/stage.sh`, `installer/README.TXT`, `installer/tools/e2e-w95.sh` and `e2e-w31.sh` (a ticked run), Quill's installer docs.
 
@@ -222,7 +211,7 @@ files    = [{ from = "dist/ghostwriter/QUILLGW.SCR", to = "{install}/" }]
 shortcut = [{ name = "Quill Ghostwriter (3.x)", target = "{install}/QUILLGW.SCR", in = "start_menu" }]
 ```
 
-On Windows 95 a shortcut to a `.scr` opens it with the `scrfile` verb (`"%1" /S`), so it plays; `QUILLGW.SCR` with no argument runs as `/s`. Program Manager may refuse an item whose file is not a program by `WIN.INI`'s `Programs=`; if the Windows 3.11 run shows that, drop the 3.x shortcut on `win16-x86` (keep the file) and say in `README.TXT` how to list it: copy `QUILLGW.SCR` to the Windows folder. Neither shows in Display Properties or Control Panel > Desktop from the install folder; that needs a `{windows}` or `{system}` placeholder (SAV-D58, an owner decision).
+On Windows 95 a shortcut to a `.scr` opens it with the `scrfile` verb (`"%1" /S`), so it plays; `QUILLGW.SCR` with no argument runs as `/s`. Program Manager may refuse an item whose file is not a program by `WIN.INI`'s `Programs=`; if the Windows 3.11 run shows that, drop the 3.x shortcut on `win16-x86` (keep the file) and say in `README.TXT` how to list it: copy `QUILLGW.SCR` to the Windows folder. Neither shows in Display Properties or Control Panel > Desktop from the install folder; that waits for the `{windows}` and `{system}` placeholders in liminal-installer (SAV-D58), then `to` changes.
 
 **Build.** `fetch-ghostwriter.sh` downloads the tar at S from GitHub into `~/.cache/quill16-installer-build/ghostwriter`, checks its sum, runs `scripts/build-scr.sh` and `platforms/win16/build.sh` there, and checks both outputs' sums from the pin. `stage.sh --build` calls it; plain `stage.sh` copies from `GHOSTWRITER_DIR`; `--stand-ins` writes placeholders for both. No `.SCR` is committed.
 
@@ -232,17 +221,19 @@ On Windows 95 a shortcut to a `.scr` opens it with the `scrfile` verb (`"%1" /S`
 
 ## Owner decisions
 
-Each has a default in place; the file named swaps it.
+The owner's answers are in place; the file named swaps each one.
 
-| Question | Default | Where to swap |
+| Question | Answer | Where to swap |
 | --- | --- | --- |
-| Ghostwriter in Display Properties from Quill's installers | Not listed: installed to `{install}` with a Start menu shortcut, because the installer has no `{windows}` or `{system}` path | A liminal-installer package adding `{windows}` and `{system}` to every runtime and the receipts, then `to = "{system}/"` and `"{windows}/"` in Quill's `installer/components.toml` |
-| The compact image keeps the savers | Yes, the five and the Collection selected | `recipes/afterglow-compact.toml`: a trim extra with one `f ReactOS/system32/AG….SCR` line per file and `reg_files` without `screensaver-afterglow` |
-| The default saver and timeout in the images | The Collection after ten minutes | `guest/reg/screensaver-afterglow.reg` in reactos-liminal |
-| A saver selected in the Quill remix | None (the web demo idles in v86, where a saver costs the visitor's CPU) | Add `"screensaver-afterglow"` to `reg_files` in `qagrr.toml` |
+| Ghostwriter in Display Properties from Quill's installers | Wanted, but waits for a new liminal-installer feature (`{windows}` and `{system}` placeholders); until then it installs to `{install}` with a Start menu shortcut | A liminal-installer package adding `{windows}` and `{system}` to every runtime and the receipts, then `to = "{system}/"` and `"{windows}/"` in Quill's `installer/components.toml` |
+| The compact image keeps the savers | Yes, the five; ReactOS's own savers go in the compact image and stay in the full one | `recipes/afterglow-compact.toml`: a trim extra with one `f ReactOS/system32/AG….SCR` line per file |
+| A default saver and timeout in the images | None: no saver is selected in any image (SAV-D59) | A named registry file in reactos-liminal (the earlier plan's `screensaver-afterglow.reg`: `SCRNSAVE.EXE`, `ScreenSaveActive` 1, `ScreenSaveTimeOut` 600) listed after `quiet` in `reg_files` |
+| A saver selected in the Quill remix | None | A named registry file as above in `qagrr.toml`'s `reg_files` |
 | The savers' settings written into the images | None: the program defaults (`Sound` on, `Volume` 28, Dusk) | A recipe-level `.reg` file under `HKCU\Software\Liminal HQ\Afterglow Screensavers\<Saver>`, or the defaults in `savers_core::settings` |
-| ReactOS's own savers beside Afterglow's in the full image | Kept (the full image removes nothing) | A trim extra in `recipes/afterglow.toml` naming the eight stock `.scr` files |
+| ReactOS's own savers beside Afterglow's in the full image | Kept in the full image, removed from the compact | A trim extra in `recipes/afterglow.toml` naming the eight stock `.scr` files |
 | Both Ghostwriter editions on Windows 95 | Both offered, unticked | `targets` of `ghostwriter16` in `installer/components.toml` |
+| The Cracktro's scroller words | Off by default; a setting turns them on and a text field takes your own words (WP-SCROLL) | `savers_core::settings` defaults |
+| Linux packages and one window per monitor for the GPU Twilight | Queued (WP-LINUX-PKG, WP-GPU-MONITORS) | The two briefs below |
 
 ## Sonnet briefs
 
@@ -254,7 +245,7 @@ Package: WP-PACK-1 in docs/packing.md — read it, AGENTS.md, docs/landing.md, d
 
 Set up:
 - git -C ~/source/liminal-hq-labs/afterglow-savers fetch
-- git -C ~/source/liminal-hq-labs/afterglow-savers worktree add -b ci/pack-build ~/source/worktrees/afterglow-savers/pack-build origin/main
+- git -C ~/source/liminal-hq-labs/afterglow-savers worktree add -b feat/pack-build ~/source/worktrees/afterglow-savers/pack-build origin/main
 - Work only in ~/source/worktrees/afterglow-savers/pack-build. Never edit the main checkout.
 
 Do:
@@ -283,7 +274,7 @@ Commit: small Conventional Commits (ci:, build:, docs:), message written to a fi
 git commit -F <file>; bold-label markdown body hard-wrapped at about 72; trailer
 Co-Authored-By: Claude Sonnet <your exact model> <noreply@anthropic.com>. Stage files by name; never git add -A or git commit -a.
 
-Push only ci/pack-build and open a pull request (gh pr create): title capitalized imperative, e.g. "Build the image savers from a
+Push only feat/pack-build and open a pull request (gh pr create): title capitalized imperative, e.g. "Build the image savers from a
 source archive and in CI"; body ## Summary with bold-led bullets, ## Test plan with [x]/[ ] items naming commands, last item
 "- [ ] Not verified: …". Do not merge. Wait for CI; fix failures on the branch.
 
@@ -339,8 +330,8 @@ Needs WP-PACK-3 merged and S (the afterglow-savers commit from WP-PACK-2's merge
 Worktree: git -C ~/source/liminal-hq-labs/reactos-liminal worktree add -b feat/afterglow-savers
 ~/source/worktrees/reactos-liminal/afterglow-savers origin/main.
 WP-PACK-4: [builds.afterglow-savers] at S with script scripts/build-scr.sh and five outputs, five [[files]] to ReactOS/system32,
-guest/reg/screensaver-afterglow.reg (SPDX header with ;) after quiet in reg_files, the named file in recipe.py, a test that the base
-trim keeps AG*.SCR, ./rl pin then ./rl lock and ./rl verify for both recipes, ci.yml job "Afterglow savers", build.yml cache and
+no registry file and no saver selected (SAV-D59: quiet.reg stays the only screensaver setting), the full image keeping ReactOS's own
+savers and the compact image trimming them, a test that no trim profile names an AG*.SCR file, ./rl pin then ./rl lock and ./rl verify for both recipes, ci.yml job "Afterglow savers", build.yml cache and
 --require for the savers tar, NOTICE.md, SPEC.md, docs. The sums must equal afterglow-savers CI's for S.
 WP-PACK-5: rl install/image/audit/parts for full and compact in ~/.cache/reactos-liminal (check df -h /home first), sizes before
 and after, then boot both with afterglow-savers scripts/guest/guest.py --in-image headless with KVM (-display none, own monitor socket, keys via
@@ -357,8 +348,8 @@ Sonnet builder, Quill (~/source/experiments/quill16: never edit that checkout; o
 Package WP-PACK-6 in afterglow-savers docs/packing.md. Needs WP-PACK-4 merged in reactos-liminal.
 Worktree: git -C ~/source/experiments/quill16 worktree add -b feat/remix-savers ~/source/worktrees/quill16/remix-savers origin/main.
 Read the repository's AGENTS.md and site/try-reactos/README.md first and follow its rules and decision prefix.
-Pin reactos-liminal.pin to WP-PACK-4's merge commit; add AGQUILL.SCR's output sum and its [[files]] entry to qagrr.toml; leave
-reg_files without screensaver-afterglow. build-with-rl.sh --check-trim, --dry-run, a full build (RL_QEMU_LOCK set), build-state.sh,
+Pin reactos-liminal.pin to WP-PACK-4's merge commit; add AGQUILL.SCR's output sum and its [[files]] entry to qagrr.toml; select no
+saver. build-with-rl.sh --check-trim, --dry-run, a full build (RL_QEMU_LOCK set), build-state.sh,
 check-state.sh; boot the disk with afterglow-savers scripts/guest/guest.py --in-image (QEMU -display none). Chromium runs
 headless from the scripts only. Evidence remix-*.png to ~/Documents/Liminal HQ/Afterglow/Savers/images/; parts size change in the PR.
 Commits, PR, cleanup and report as in WP-PACK-1's brief (branch feat/remix-savers).
@@ -368,7 +359,8 @@ Commits, PR, cleanup and report as in WP-PACK-1's brief (branch feat/remix-saver
 
 ```text
 Sonnet builder, Quill (~/source/experiments/quill16: never edit that checkout; only git fetch and git worktree add/remove there).
-Package WP-PACK-7 in afterglow-savers docs/packing.md. Needs S. No liminal-installer change of any kind.
+Package WP-PACK-7 in afterglow-savers docs/packing.md. Needs S. No liminal-installer change of any kind here; showing in Display
+Properties waits for liminal-installer's {windows} and {system} placeholders, so leave `to = "{install}/"` and note the dependency.
 Worktree: git -C ~/source/experiments/quill16 worktree add -b feat/installer-ghostwriter
 ~/source/worktrees/quill16/installer-ghostwriter origin/main. Read the repository's AGENTS.md and installer docs first.
 Add installer/ghostwriter.pin, installer/tools/fetch-ghostwriter.sh (download the GitHub tar at S to
@@ -380,4 +372,63 @@ DISPLAY=:NN on every command and WAYLAND_DISPLAY unset; xdotool only against tha
 If Program Manager refuses the QUILLGW.SCR item, drop that shortcut on win16-x86 and document copying it to the Windows folder.
 Evidence w95-*.png and w31-*.png to ~/Documents/Liminal HQ/Afterglow/Savers/images/.
 Commits, PR, cleanup and report as in WP-PACK-1's brief (branch feat/installer-ghostwriter).
+```
+
+## WP-SCROLL — the Cracktro's scroller, off by default (afterglow-savers, areas `core` and `win32`)
+
+Small and separate; WP-PACK-1 does not need it. Today the Cracktro scrolls the Afterglow message along its lower third (`Message`, 2,000 characters, SPEC section 7). The owner wants the words off until asked for.
+
+**Finish line.** A new setting (`Scroller`, `REG_DWORD`, 0 off or 1 on, default 0) decides whether the sine scroller shows words. Off, the scene plays as now without the scroller (the copper wave motion stays where the design wants it, with no letters); on, it scrolls `Message`. `Message` is a text field in the Afterglow dialog, enabled only when the scroller is on, and its default text stays the current Afterglow message (the defaults table in SPEC). The Collection's Cracktro part follows the same setting. Windows, Linux and the host preview agree.
+
+**Files owned.** `crates/savers-core` (`settings.rs`, the Cracktro scene, goldens that change because the default is off, say which), `platforms/win32` (the dialog's Look page: a checkbox and a text field, string table), `docs/settings-dialog.md`, `docs/scenes.md`, `SPEC.md`, `docs/decisions.md`.
+
+**Tests.** `make check`; goldens updated with a note in the commit of every frame that changed and why; a unit test that `Message` round-trips and is used only when `Scroller` is 1; Wine screendumps of the dialog with the box off and on.
+
+**Brief.**
+
+```text
+Sonnet builder, afterglow-savers. Package WP-SCROLL in docs/packing.md (read it, SPEC.md section 7 and 8, docs/settings-dialog.md,
+docs/scenes.md, crates/savers-core/src/scenes/cracktro.rs). Worktree: git -C ~/source/liminal-hq-labs/afterglow-savers worktree
+add -b feat/scroller-off ~/source/worktrees/afterglow-savers/scroller-off origin/main. Add the Scroller setting (default off) and the
+dialog's checkbox and Message text field (enabled only when on); keep the built-in default text. Update SPEC, a decision, goldens
+that change. Gate: make check; Wine screendumps under your own Xvfb (DISPLAY set on every command, WAYLAND_DISPLAY unset, never :0,
+no pkill). Commits, PR and report as WP-PACK-1's brief.
+```
+
+## WP-LINUX-PKG — packages for the GPU Twilight (afterglow-savers, area `linux`)
+
+**Finish line.** `make packages` (a script under `platforms/linux/packaging/`) builds a `.deb`, an `.rpm` and an Arch `PKGBUILD` (with a `.SRCINFO`) for `afterglow-twilight-gpu`, installing the program, `afterglow-twilight-xscreensaver`, the desktop launcher and `afterglow-twilight.xml` into xscreensaver's own config folder (`/usr/share/xscreensaver/config/`), so the hack shows its settings dialog without the administrator step `docs/linux-edition.md` mentions today. The packages depend on the graphics and sound libraries the program links (Vulkan loader, ALSA) and suggest xscreensaver; they put nothing under the user's home.
+
+**Files owned.** `platforms/linux/packaging/` (new), `docs/linux-edition.md` (Packages section), `docs/testing.md`, `.github/workflows/ci.yml` (one job that builds the three and lints them), `docs/decisions.md`.
+
+**Tests.** Build in a Debian and a Fedora container and an Arch container (docker), install each package there, and check `afterglow-twilight-gpu --help`, the XML in place and `dpkg -c`, `rpm -qlp` and `pacman -Ql` file lists; `lintian` and `rpmlint` output reported; the packages' versions come from the crate version.
+
+**Brief.**
+
+```text
+Sonnet builder, afterglow-savers. Package WP-LINUX-PKG in docs/packing.md (read it, docs/linux-edition.md, platforms/linux/install.sh,
+platforms/linux/xscreensaver). Worktree: git -C ~/source/liminal-hq-labs/afterglow-savers worktree add -b feat/linux-packages
+~/source/worktrees/afterglow-savers/linux-packages origin/main. Build deb, rpm and PKGBUILD for the GPU Twilight, installing the
+xscreensaver XML to /usr/share/xscreensaver/config/. Containers via docker only; no sudo on the host, no installs on the host.
+Never push tags or publish. Gate: make check-fast, packaging tests in the containers, markdownlint. Commits, PR and report as
+WP-PACK-1's brief.
+```
+
+## WP-GPU-MONITORS — one window per monitor (afterglow-savers, area `linux`)
+
+**Finish line.** `afterglow-twilight-gpu` opens one borderless fullscreen window on every monitor (today only the primary monitor is covered, `docs/linux-edition.md`), each drawing its own view of the scene (a different seed, camera path and time offset, so the monitors never repeat each other) with options that can differ per monitor in the settings file (`[monitor.<name>]` tables overriding the shared values: palette, speed, render scale, sun) and, where they apply, on the command line (`--monitor NAME:KEY=VALUE`). Input on any monitor ends the saver. One monitor behaves exactly as now. Wayland and X11 both; `--monitors primary` restores the old behaviour.
+
+**Files owned.** `platforms/linux/src`, `crates/savers-gpu` (only what per-view parameters need), `docs/linux-edition.md`, `docs/gpu-twilight.md`, `SPEC.md` (the Linux settings), `docs/decisions.md`.
+
+**Tests.** `make check-gpu` extended on its own Xvfb with two virtual screens (Xinerama or two RandR monitors): two windows, different frames, the exit rules; a unit test for the settings merge; a single-monitor run byte-identical to today's.
+
+**Brief.**
+
+```text
+Sonnet builder, afterglow-savers. Package WP-GPU-MONITORS in docs/packing.md (read it, docs/linux-edition.md, docs/gpu-twilight.md,
+platforms/linux/src, crates/savers-gpu). Worktree: git -C ~/source/liminal-hq-labs/afterglow-savers worktree add -b feat/gpu-monitors
+~/source/worktrees/afterglow-savers/gpu-monitors origin/main. One window per monitor, a different view per window, per-monitor
+option tables in the settings file, a flag to restore the primary-only behaviour. Test on your own Xvfb with two RandR monitors
+(DISPLAY set on every command, WAYLAND_DISPLAY unset, never :0, no pkill). Gate: make check, make check-gpu. Commits, PR and report
+as WP-PACK-1's brief.
 ```
