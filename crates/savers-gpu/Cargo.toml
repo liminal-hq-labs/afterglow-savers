@@ -1,0 +1,24 @@
+# The graphics-card edition of Afterglow Twilight: a wgpu renderer drawn from the same data as the CPU scene. Host only, never a `.scr`.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "savers-gpu"
+description = "Renders Afterglow Twilight with wgpu (Vulkan, Metal, DX12, GL) from the CPU scene's shared maps and parameters"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+savers-core = { path = "../savers-core" }
+# Only the backends and the WGSL front end; the browser (`webgpu`) path is never built.
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "vulkan", "gles", "metal", "dx12", "wgsl"] }
+pollster = "0.4"
+bytemuck = { version = "1.22", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -18,7 +18,7 @@ is_candidate() {
 	case "$1" in
 	*/Cargo.toml | Cargo.toml | *.lock | *-lock.yaml | *.json | *.jsonc | *.md) return 1 ;;
 	*/generated/*) return 1 ;;
-	*.rs | *.sh | *.py | *.js | *.ts | *.mjs | *.css | *.html | *.yml | *.yaml | *.toml | *.svg | *.xml | *.ui) return 0 ;;
+	*.rs | *.sh | *.py | *.js | *.ts | *.mjs | *.css | *.html | *.yml | *.yaml | *.toml | *.svg | *.xml | *.ui | *.wgsl) return 0 ;;
 	*/Dockerfile | Dockerfile | */Makefile | Makefile) return 0 ;;
 	*) return 1 ;;
 	esac
