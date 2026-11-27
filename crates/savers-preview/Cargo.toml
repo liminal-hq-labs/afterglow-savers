@@ -1,0 +1,20 @@
+# Host-only previews: renders any scene to PNG frames, contact sheets and timings. Never shipped.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "savers-preview"
+description = "Renders the Afterglow screensavers on the host, to PNG frames, contact sheets and frame times"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+savers-core = { path = "../savers-core" }
+
+[lints]
+workspace = true

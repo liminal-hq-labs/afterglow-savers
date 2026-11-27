@@ -1,0 +1,17 @@
+# The portable core: renderer, scenes, finishing and settings, `no_std` with `alloc`.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "savers-core"
+description = "The Afterglow screensavers' software renderer, scenes and settings, with no platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

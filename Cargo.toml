@@ -1,0 +1,35 @@
+# Workspace for the host-buildable crates. The Win32 shell is its own workspace, so its build-std flags never reach the host build.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = ["crates/savers-core", "crates/savers-preview"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterglow-savers"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = 1
+
+# Tests and the preview tool are much faster with the core optimized.
+[profile.dev.package.savers-core]
+opt-level = 2
+
+[profile.test.package.savers-core]
+opt-level = 2
