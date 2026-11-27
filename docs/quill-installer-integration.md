@@ -28,21 +28,21 @@ The component model in liminal-installer's `SPEC.md` §4 has three gaps for this
 1. This repository's builds write `AGQUILL.SCR` (`platforms/win32`, i586) and `QUILLGW.SCR` (the Win16 edition). Quill's build copies them into its installer project's `dist/` at fixed paths, from a pinned copy (a vendored `dist/ghostwriter/` with a `PROVENANCE.md` naming this repository's commit and the files' SHA-256 sums), as Quill already vendors other inputs.
 2. `components.toml` gains:
 
-```toml
-[[component]]
-id      = "ghostwriter"
-name    = "Quill Ghostwriter screensaver"
-default = false
-targets = ["windows-x86"]
-files   = [{ from = "dist/ghostwriter/AGQUILL.SCR", to = "{system}/" }]
+   ```toml
+   [[component]]
+   id      = "ghostwriter"
+   name    = "Quill Ghostwriter screensaver"
+   default = false
+   targets = ["windows-x86"]
+   files   = [{ from = "dist/ghostwriter/AGQUILL.SCR", to = "{system}/" }]
 
-[[component]]
-id      = "ghostwriter16"
-name    = "Quill Ghostwriter screensaver, Windows 3.x edition"
-default = false
-targets = ["windows-x86", "win16-x86"]
-files   = [{ from = "dist/ghostwriter/QUILLGW.SCR", to = "{windows}/" }]
-```
+   [[component]]
+   id      = "ghostwriter16"
+   name    = "Quill Ghostwriter screensaver, Windows 3.x edition"
+   default = false
+   targets = ["windows-x86", "win16-x86"]
+   files   = [{ from = "dist/ghostwriter/QUILLGW.SCR", to = "{windows}/" }]
+   ```
 
 3. The components page needs nothing new beyond `default = false`: the description line under each check box can say "A screensaver: Display Properties > Screen Saver".
 
