@@ -1,0 +1,29 @@
+# The launcher entry for Afterglow Twilight; the install script fills in the path of the program.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Afterglow Twilight
+GenericName=Screensaver
+Comment=A planet at dusk, drawn on the graphics card; any key or click ends it
+Exec=@BIN@/afterglow-twilight-gpu
+Terminal=false
+Categories=Screensaver;Graphics;
+Keywords=screensaver;planet;twilight;afterglow;
+StartupNotify=false
+Actions=Window;Preview;Settings;
+
+[Desktop Action Window]
+Name=Open in a window
+Exec=@BIN@/afterglow-twilight-gpu --window 1280x720
+
+[Desktop Action Preview]
+Name=Preview (small, silent)
+Exec=@BIN@/afterglow-twilight-gpu --preview
+
+[Desktop Action Settings]
+Name=Write the settings file
+Exec=@BIN@/afterglow-twilight-gpu --write-config

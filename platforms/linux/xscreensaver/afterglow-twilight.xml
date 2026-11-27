@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The settings dialog of Afterglow Twilight for xscreensaver-settings.
+
+  (c) Copyright 2026 Liminal HQ, Scott Morris
+  SPDX-License-Identifier: Apache-2.0 OR MIT
+
+  Copy it to xscreensaver's config folder (usually /usr/share/xscreensaver/config/, which needs administrator rights; the install
+  script prints the line) and add the hack to `programs:` in ~/.xscreensaver. Each control maps to an option of the program; the names
+  are the Win32 saver's registry values (docs/linux-edition.md).
+-->
+<screensaver name="afterglow-twilight-xscreensaver" _label="Afterglow Twilight">
+
+  <command arg="-root"/>
+
+  <select id="palette">
+    <option id="dusk" _label="Dusk" arg-set="--palette Dusk"/>
+    <option id="indigo" _label="Indigo" arg-set="--palette Indigo"/>
+    <option id="ember" _label="Ember" arg-set="--palette Ember"/>
+    <option id="aurora" _label="Aurora" arg-set="--palette Aurora"/>
+    <option id="graphite" _label="Graphite" arg-set="--palette Graphite"/>
+  </select>
+
+  <number id="speed" type="slider" arg="--speed %"
+          _label="Speed" _low-label="Slow" _high-label="Fast"
+          low="25" high="200" default="100"/>
+
+  <select id="detail">
+    <option id="low" _label="Low detail" arg-set="--detail Low"/>
+    <option id="medium" _label="Medium detail" arg-set="--detail Medium"/>
+    <option id="high" _label="High detail" arg-set="--detail High"/>
+    <option id="ultra" _label="Ultra detail" arg-set="--detail Ultra"/>
+  </select>
+
+  <select id="scale">
+    <option id="scale100" _label="Draw at full size" arg-set="--scale 100"/>
+    <option id="scale75" _label="Draw at 75% and enlarge" arg-set="--scale 75"/>
+    <option id="scale50" _label="Draw at 50% and enlarge" arg-set="--scale 50"/>
+  </select>
+
+  <select id="fps">
+    <option id="fps60" _label="60 frames a second" arg-set="--fps 60"/>
+    <option id="fps30" _label="30 frames a second" arg-set="--fps 30"/>
+    <option id="fps120" _label="120 frames a second" arg-set="--fps 120"/>
+    <option id="fpsv" _label="As fast as the display (vsync)" arg-set="--fps 0"/>
+  </select>
+
+  <number id="glow" type="slider" arg="--set Bloom=%"
+          _label="Glow" _low-label="None" _high-label="Strong"
+          low="0" high="100" default="60"/>
+
+  <number id="grain" type="slider" arg="--set Grain=%"
+          _label="Film grain" _low-label="None" _high-label="Strong"
+          low="0" high="100" default="30"/>
+
+  <boolean id="nosun" _label="Hide the sun" arg-set="--no-sun"/>
+
+  <boolean id="sound" _label="Play sound (quietly)" arg-set="--sound"/>
+
+  <number id="volume" type="slider" arg="--volume %"
+          _label="Volume" _low-label="Quiet" _high-label="Loud"
+          low="0" high="100" default="28"/>
+
+  <_description>
+Afterglow Twilight: a planet at dusk with moons, a sun and a satellite, drawn on the graphics card at the display's full size,
+including 4K.
+
+Sound is off unless ticked, as xscreensaver hacks are expected to be silent. Other settings (the finishing options, the seed) are
+in ~/.config/liminal-hq/afterglow-savers/twilight.toml.
+
+Part of Afterglow Screensavers, an experiment by Liminal HQ Labs.
+  </_description>
+
+</screensaver>

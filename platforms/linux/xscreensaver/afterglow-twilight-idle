@@ -1,0 +1,72 @@
+#!/bin/sh
+# Starts the saver after the session has been idle, on desktops with no screensaver hook (GNOME, KDE Plasma, anything else).
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# usage: afterglow-twilight-idle [SECONDS] [-- saver options]   (SECONDS defaults to 300)
+#
+# It asks the desktop how long the user has been idle: GNOME's Mutter over D-Bus (`gdbus`), else `xprintidle` on X11. When the time
+# passes SECONDS, and nothing (a video, a presentation) has inhibited idling, it runs the saver, which ends itself on any key,
+# click or 10 pixels of mouse movement; then it waits for the next idle period. Run it from a systemd user service
+# (afterglow-twilight-idle.service) or the desktop's autostart.
+
+delay=300
+case "${1:-}" in
+'' | --) ;;
+*[!0-9]*) ;;
+*)
+	delay=$1
+	shift
+	;;
+esac
+[ "${1:-}" = "--" ] && shift
+
+here=$(dirname "$0")
+if [ -x "$here/afterglow-twilight-gpu" ]; then
+	program="$here/afterglow-twilight-gpu"
+else
+	program=afterglow-twilight-gpu
+fi
+
+# Milliseconds since the last input, or nothing when the desktop cannot say.
+idle_ms() {
+	if command -v gdbus >/dev/null 2>&1; then
+		out=$(gdbus call --session --dest org.gnome.Mutter.IdleMonitor --object-path /org/gnome/Mutter/IdleMonitor/Core \
+			--method org.gnome.Mutter.IdleMonitor.GetIdletime 2>/dev/null) && {
+			out=${out#*uint64 }
+			printf '%s\n' "${out%%,*}"
+			return 0
+		}
+	fi
+	if command -v xprintidle >/dev/null 2>&1; then
+		xprintidle 2>/dev/null && return 0
+	fi
+	return 1
+}
+
+# Whether something has asked the session not to go idle (GNOME session manager, flag 8).
+inhibited() {
+	command -v gdbus >/dev/null 2>&1 || return 1
+	out=$(gdbus call --session --dest org.gnome.SessionManager --object-path /org/gnome/SessionManager \
+		--method org.gnome.SessionManager.IsInhibited 8 2>/dev/null) || return 1
+	case "$out" in
+	*true*) return 0 ;;
+	esac
+	return 1
+}
+
+if ! idle_ms >/dev/null; then
+	echo "afterglow-twilight-idle: this session cannot say how long it has been idle (needs GNOME's IdleMonitor or xprintidle)" >&2
+	exit 1
+fi
+
+while :; do
+	sleep 5
+	idle=$(idle_ms) || continue
+	if [ "$idle" -ge $((delay * 1000)) ] && ! inhibited; then
+		"$program" "$@"
+		# Let the input that ended it count before looking again.
+		sleep 5
+	fi
+done

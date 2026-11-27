@@ -1,0 +1,23 @@
+#!/bin/sh
+# The xscreensaver hack: runs Afterglow Twilight in the window xscreensaver gives it, silent unless asked.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# Use it from the `programs:` list of ~/.xscreensaver:
+#
+#   "Afterglow Twilight"  afterglow-twilight-xscreensaver -root --palette Aurora --sound  \n\
+#
+# xscreensaver adds `-window-id ID` for its settings preview and sets $XSCREENSAVER_WINDOW for a real run; the program understands
+# both, and `-root`. Every other option is the program's own (`afterglow-twilight-gpu --help`).
+
+here=$(dirname "$0")
+if [ -x "$here/afterglow-twilight-gpu" ]; then
+	program="$here/afterglow-twilight-gpu"
+else
+	program=afterglow-twilight-gpu
+fi
+
+# xscreensaver is an X11 program; a hack always draws into its X11 window.
+unset WAYLAND_DISPLAY
+exec "$program" "$@"

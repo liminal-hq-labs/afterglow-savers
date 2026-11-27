@@ -1,0 +1,19 @@
+# A systemd user service that starts Afterglow Twilight when the session is idle (GNOME, KDE Plasma and others).
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# `systemctl --user enable --now afterglow-twilight-idle.service`; change the delay (seconds) on the ExecStart line.
+
+[Unit]
+Description=Afterglow Twilight screensaver, after the session has been idle
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=@BIN@/afterglow-twilight-idle 300
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=graphical-session.target
