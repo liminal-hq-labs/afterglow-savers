@@ -33,5 +33,7 @@ if [ "$size" -gt 65536 ]; then
 fi
 python3 tools/check_segments.py "$out/QUILLGW.SCR"
 python3 tools/check_cpu.py "$out/QUILLGW.SCR"
+# The icon (group 100, from art/gen-quillgw-icon.py), which Program Manager and File Manager show.
+python3 tools/check_resources.py "$out/QUILLGW.SCR" 14:100
 python3 tools/ne_dump.py "$out/QUILLGW.SCR" | grep -E '^(resident|non-resident) names' | grep -q 'SCRNSAVE : Quill Ghostwriter'
-echo "check: QUILLGW.SCR is $size bytes, an NE executable described as a screen saver"
+echo "check: QUILLGW.SCR is $size bytes, an NE executable described as a screen saver, with its icon"

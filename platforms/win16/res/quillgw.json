@@ -1,4 +1,5 @@
 {
+	"icons": [{ "id": 100, "file": "quillgw.ico" }],
 	"dialogs": [
 		{
 			"id": 100,

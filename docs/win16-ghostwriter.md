@@ -10,13 +10,14 @@ The findings of the spike for `QUILLGW.SCR`, the Windows 3.x edition of Quill Gh
 
 | What | Bytes |
 | --- | --- |
-| `QUILLGW.SCR` | 16 560 (limit 65 536, checked by `platforms/win16/check.sh`) |
+| `QUILLGW.SCR` | 17 712 (limit 65 536, checked by `platforms/win16/check.sh`); 16 560 before its icon (SAV-D50), whose two images and group add 1 152 |
 | Code, one segment (budget 40 000 in `res/quillgw.segments.json`) | 13 392 |
 | Data segment: data | 1 964 |
 | Data segment: stack | 8 192 |
 | Data segment: local heap | 4 096 |
 | Data segment in all, of 65 536 | 14 252 (22 %) |
 | Imports | 51 |
+| Resources | 5: the setup dialog, string 1, and icon group 100 with its 32 and 16 px images |
 
 The text bank (sixteen lines, seven typos) and the scene state are part of the 1 964 bytes of data. The scene is drawn into a memory bitmap that lives in GDI's own memory, not in the data segment.
 
@@ -51,7 +52,7 @@ From ReactOS 0.4.16's source (`dll/cpl/desk/screensaver.c`) and a run in the Qui
 - A 256-colour display driver.
 - Real input ending the saver on Windows 3.11 (the harness sends none to the guest); it was shown under Wine (mouse move, click).
 - Why otvdm did not run it, and the speed of the scene on a slow 386 (the scene redraws only what changes and copies one bitmap a frame; frame times were not measured).
-- The saver's own icon; Program Manager and Explorer show the default.
+- The icon in Program Manager and File Manager on Windows 3.11 itself (the resource is checked by `check.sh` and shown under Wine; see below).
 
 ## How to run it
 
