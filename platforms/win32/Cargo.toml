@@ -1,0 +1,103 @@
+# The Win32 `.scr` shells: GUI programs with no C runtime, built for a Pentium and for x86-64. Its own workspace, so the build-std flags
+# and the custom targets never reach the host build. `crates` is a symlink to `../../crates`, so the core is reached under this
+# workspace's root and the build does not depend on the checkout path.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = ["."]
+
+# Keep these equal to the root Cargo.toml's: the core inherits them.
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterglow-savers"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[package]
+name = "afterglow-win32"
+description = "The Afterglow screensavers for Windows 95 and later and ReactOS: no-C-runtime GUI programs over the Win32 API"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterglow-savers"
+publish = false
+build = "build.rs"
+
+[lib]
+name = "afterglow_win32"
+path = "src/lib.rs"
+
+[[bin]]
+name = "agmaze"
+path = "src/bin/agmaze.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "agcrack"
+path = "src/bin/agcrack.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "agtwilit"
+path = "src/bin/agtwilit.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "agink"
+path = "src/bin/agink.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "agcollct"
+path = "src/bin/agcollct.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "agquill"
+path = "src/bin/agquill.rs"
+test = false
+bench = false
+
+# The test stand-in for the Display applet's preview pane; build.sh does not ship it.
+[[bin]]
+name = "previewhost"
+path = "src/bin/previewhost.rs"
+test = false
+bench = false
+
+[dependencies]
+savers-core = { path = "crates/savers-core" }
+
+[build-dependencies]
+savers-core = { path = "crates/savers-core" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+panic = "abort"
+# Size over speed: with `3` or `2` the Collection and the x86-64 set pass the budgets of SAV-D14 only barely or not at all.
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+debug = 0

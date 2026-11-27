@@ -1,0 +1,7 @@
+# rustfmt settings for the Win32 workspace, which is not under the root workspace: the same hard tabs and width.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+hard_tabs = true
+max_width = 130
