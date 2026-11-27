@@ -63,9 +63,9 @@ win32-build:
 	bash platforms/win32/check.sh i586
 	bash platforms/win32/check.sh x86_64
 
-# The six i586 files and SHA256SUMS in `dist/scr-i586`, as reactos-liminal and Quill build them (`scripts/build-scr.sh`).
+# The six i586 files and SHA256SUMS in `target/scr-out`, as reactos-liminal and Quill build them (`scripts/build-scr.sh`).
 build-scr:
-	bash scripts/build-scr.sh dist/scr-i586
+	bash scripts/build-scr.sh target/scr-out
 
 # A `git archive` of HEAD, built like the GitHub source tar, must match the working tree's files.
 check-archive:

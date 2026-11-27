@@ -1,6 +1,6 @@
 # One job per check, so a pull request's checks list names exactly what passed or failed.
-# The Win32 and Windows 3.x builds need a nightly build-std toolchain, Wine and QEMU, so
-# `make check` stays the full local gate; CI runs the host checks.
+# The Win32 and Windows 3.x builds use the pinned stable toolchain with `RUSTC_BOOTSTRAP` and build-std, so they run here too; the Wine
+# smoke and the ReactOS guest need Wine and QEMU, so `make check` stays the full local gate.
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -141,3 +141,208 @@ jobs:
 
       - name: Run the tests
         run: cargo nextest run --workspace --locked --no-tests=pass
+
+  win32-i586:
+    name: Win32 build (Pentium)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The pinned toolchain with the parts the Win32 and Windows 3.x builds need: `rust-src` for build-std and `llvm-tools` for rust-lld
+      # and llvm-objdump.
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy,rust-src,llvm-tools
+          rustup default 1.98.0
+
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends gawk make
+
+      - name: Build
+        run: bash platforms/win32/build.sh i586
+
+      - name: Check structure, imports, Pentium instructions and sizes
+        run: bash platforms/win32/check.sh i586
+
+  win32-x86_64:
+    name: Win32 build (x86-64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The pinned toolchain with the parts the Win32 and Windows 3.x builds need: `rust-src` for build-std and `llvm-tools` for rust-lld
+      # and llvm-objdump.
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy,rust-src,llvm-tools
+          rustup default 1.98.0
+
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends gawk make
+
+      - name: Build
+        run: bash platforms/win32/build.sh x86_64
+
+      - name: Check structure, imports and sizes
+        run: bash platforms/win32/check.sh x86_64
+
+  win32-clippy:
+    name: Win32 clippy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The pinned toolchain with the parts the Win32 and Windows 3.x builds need: `rust-src` for build-std and `llvm-tools` for rust-lld
+      # and llvm-objdump.
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy,rust-src,llvm-tools
+          rustup default 1.98.0
+
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends make
+
+      - name: Format, lint and test the Win32 workspace
+        run: make win32-fmt win32-clippy win32-test
+
+  scr-contract:
+    name: Image build contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The pinned toolchain with the parts the Win32 and Windows 3.x builds need: `rust-src` for build-std and `llvm-tools` for rust-lld
+      # and llvm-objdump.
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy,rust-src,llvm-tools
+          rustup default 1.98.0
+
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends gawk make
+
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build from a source archive and compare with the tree
+        run: bash scripts/check-archive-build.sh
+
+      - name: Build the files for the artifact
+        run: bash scripts/build-scr.sh "$RUNNER_TEMP/scr-i586"
+
+      - name: Print the sums
+        run: |
+          {
+            echo '### Image build contract: SHA-256 of the six i586 files'
+            echo
+            echo '```text'
+            cat "$RUNNER_TEMP/scr-i586/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the files
+        uses: actions/upload-artifact@v4
+        with:
+          name: scr-i586
+          path: ${{ runner.temp }}/scr-i586
+          retention-days: 7
+          if-no-files-found: error
+
+  win16:
+    name: Windows 3.x build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The pinned toolchain with the parts the Win32 and Windows 3.x builds need: `rust-src` for build-std and `llvm-tools` for rust-lld
+      # and llvm-objdump.
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy,rust-src,llvm-tools
+          rustup default 1.98.0
+
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 file
+
+      - name: Check and build
+        run: bash platforms/win16/check.sh
+
+      - name: Build QUILLGW.SCR for the artifact
+        run: |
+          OUT_DIR="$RUNNER_TEMP/win16" bash platforms/win16/build.sh
+          (cd "$RUNNER_TEMP/win16" && sha256sum QUILLGW.SCR | tee QUILLGW.SCR.sha256)
+          {
+            echo '### QUILLGW.SCR'
+            echo
+            echo '```text'
+            cat "$RUNNER_TEMP/win16/QUILLGW.SCR.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the file
+        uses: actions/upload-artifact@v4
+        with:
+          name: quillgw-scr
+          path: |
+            ${{ runner.temp }}/win16/QUILLGW.SCR
+            ${{ runner.temp }}/win16/QUILLGW.SCR.sha256
+          retention-days: 7
+          if-no-files-found: error
+
+  repro:
+    name: Reproducible build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The pinned toolchain with the parts the Win32 and Windows 3.x builds need: `rust-src` for build-std and `llvm-tools` for rust-lld
+      # and llvm-objdump.
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy,rust-src,llvm-tools
+          rustup default 1.98.0
+
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends gawk
+
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build in three directories and compare
+        run: bash scripts/repro-win32.sh i586
