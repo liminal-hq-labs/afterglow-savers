@@ -6,16 +6,16 @@ The resumable log of where the work stands. Newest state first; each phase lists
 
 - **P0** repository, research notes (`docs/reactos-scr.md`), storyboard (`docs/scenes.md`). Done.
 - **P1** the engine core and the host preview tool. Done.
-- **P2** the scenes: Ink, Twilight (with its sun, SAV-D27), Cracktro, Maze, the Collection, and Quill Ghostwriter's scene. Done; previews in `~/Documents/Liminal HQ/Afterglow Savers/previews`, a 4K Twilight video too.
-- **P3** the Win32 `.scr` shells (`platforms/win32`): `/s`, `/p`, `/c`, registry, dialog, resources, six programs for i586 (x87, no MMX or SSE) and x86-64, checks, byte-identical builds and the Wine run. Done. Sizes (`-Os`, i586): AGMAZE 79 KiB, AGCRACK 79 KiB, AGTWILIT 81 KiB, AGINK 67 KiB, AGCOLLCT 167 KiB (without Ghostwriter), together 473 KiB of 640; AGQUILL 86 KiB. Next: `scripts/guest/guest.py --scr platforms/win32/dist/<arch>` in the ReactOS image.
+- **P2** the scenes: Ink, Twilight (with its sun, SAV-D27), Cracktro (with a vector-cube ring), Maze (with the portal loop, SAV-D31), the Collection, and Quill Ghostwriter. Done; previews, with and without sound, in `~/Documents/Liminal HQ/Afterglow Savers/previews`, a 4K Twilight too.
+- **P3** the Win32 `.scr` shells: done (WP-win32, then the speed build SAV-D29, the Afterglow dialog SAV-D39/D40 with pointer hiding). The ReactOS guest ran all six (`reactos-*.png` in the previews); a re-run with the pointer fix and AC97 sound capture waits for WP-audio-win32.
 - **P4** the ReactOS integration plan: done (`docs/reactos-integration.md`); the Quill installer plan too (`docs/quill-installer-integration.md`).
-- **P5** Quill Ghostwriter: the scene and `AGQUILL.SCR` are done; the Windows 3.x edition `QUILLGW.SCR` (SAV-D23) is WP-win16, queued for a builder.
-- **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): WP-gpu-share and WP-gpu-render are done (`crates/savers-gpu`, SAV-D32 and SAV-D33: a headless renderer held to the CPU frames, `savers-gpu-preview` for frames, comparisons and timings); WP-gpu-linux (the fullscreen binary and the xscreensaver hack) is next.
-- **P7** the Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after WP-win32: three work packages. The shell package is done (SAV-D39, SAV-D40): banner, swatches, live preview, fallback, Wine checks; placeholder banner moments await the art package, and the check package is next.
+- **P5** Quill Ghostwriter: the Win32 scene and `.scr` done; the Windows 3.x `QUILLGW.SCR` done (SAV-D37: go for Windows 3.x, no-go for ReactOS's list).
+- **P6** Twilight on the graphics card: renderer landed (`crates/savers-gpu`, parity 2.7 levels mean); WP-gpu-linux (window, xscreensaver, cpal audio) with a builder.
+- **P7** the Afterglow settings dialog: shell landed; WP-dialog-v2-art (banner moments, swatches) open.
+- **P8** audio: the engine and all six scores done (SAV-D34 to D36, D38); every preview video has sound. WP-audio-win32 (waveOut) queued for a builder.
+- **P9** threads for modern machines (SAV-D41, `docs/threads.md`): WP-threads queued after WP-audio-win32.
 
-Builder queue (the orchestrator's order): WP-art, WP-gpu-share, WP-win16, then the dialog v2 packages.
-
-The Win32 shell is built with `opt-level = "s"`: at `2` the Collection is 204 KiB and over its budget. The Collection's own maker leaves Ghostwriter out (a Collection asked for it plays Ink), which `AGQUILL.SCR` carries instead.
+Open small items: the Maze's day look (it ignores Light), an icon for `QUILLGW.SCR`, WP-art (icons and hero).
 
 ## Measurements
 
