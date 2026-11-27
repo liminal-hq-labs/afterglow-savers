@@ -1,0 +1,60 @@
+# Audio
+
+Sound for the savers: generated, never sampled, from the same seed and clock as the picture (SAV-D34 to SAV-D36). Twilight gets the richest score; the Maze an ambience that follows the walk to the portal; the others something small and fitting. Everything is cinematic and gentle: no sudden loud events, no hard attacks, a fade in and out with the picture.
+
+## The engine: a small synth in `savers-core`
+
+A `no_std` module, `savers-core::audio`, with no sample files:
+
+- **Voices.** Band-limited oscillators from small tables made at start (sine, soft saw, triangle, pulse; 2,048 entries each, interpolated), two detuned per pad voice; a noise source (the core's hash, filtered) for wind and air; two-operator FM for bells and glass.
+- **Shaping.** Slow envelopes (attack and release of seconds, never under 20 ms), a state-variable filter per voice with a slow LFO on its cutoff, equal-power stereo panning, a soft limiter at the end (`tanh`-like curve from the core's own maths), so nothing clips.
+- **Space.** A long reverb: a feedback delay network of eight delay lines with a slow modulation, damping in the loop, tuned per scene (Twilight's tail about 9 s, the Maze's stone about 3 s with early reflections).
+- **Format.** 22,050 Hz, stereo, 16-bit at run time (44,100 Hz for offline renders); `f32` inside, which the Pentium does on its x87.
+- **Determinism.** A scene's audio is a pure function of its seed, settings and the sample clock: notes are chosen by the seeded generator on a musical grid tied to scene time, so a WAV rendered twice is the same file, and the audio for a video matches the video's picture without rendering the picture.
+- **Following the picture.** Each scene's audio reads the same timeline the picture uses, without drawing anything: Twilight's shot table and sun moments from the shared Twilight module, the Maze's walk schedule (the hesitation and the crossing) from the same seeded maze, the Collection's turns and cross-fades. Fades follow the picture's fades.
+
+## The scores
+
+- **Twilight: vast and slow.** A drone on the palette's tonic with a sub-bass an octave and a fifth below (felt more than heard, filtered under 60 Hz at low level); pads of open fifths and added ninths that swell like aurora curtains over 8 to 16 s, following the shots (the establishing shot sparse and high; the push-in gathering the low pad; the satellite pass a few high glass bells panned with the satellite across the stereo field; the night-side drift dark and wide, with one long bright swell as the sun slides out from behind the limb). Sparse shimmer notes (FM bells at very low level) in a pentatonic set chosen from the seed. Everything through the long reverb. Each palette chooses a key and mode: Dusk D major-ish (Lydian), Indigo B♭ minor-ish (Dorian), Ember E (Mixolydian), Aurora F♯ (Lydian), Graphite A (Aeolian).
+- **Maze: ambience, no footsteps.** A distant low hum (two detuned sines with slow beating), soft wind (band-passed noise, its colour opening when a corridor opens to the sky), occasional far chimes from the sun windows (quieter the further away the nearest window is), the stone reverb. Near the portal a slow rising tone (a filtered sustained chord climbing a fourth over the approach), held still during the hesitation, then a gentle whoosh through the plane (filtered noise sweep) that resolves into the opening drone of the next walk.
+- **Ink:** glassy, watery tones: a soft pad that brightens in the aurora phase; drop-like plucks at each new pour.
+- **Cracktro:** a tiny generated chiptune, as the form demands: pulse-wave lead and arpeggios, a triangle bass, noise percussion, one pattern per part, at a gentle level (the demoscene's energy without its volume).
+- **Quill Ghostwriter:** soft keyboard ticks (filtered noise bursts, varied per key, quieter for spaces), a tiny bell when the suggestion is chosen, a hushed chord when the "Save the changes?" dialog fades up. Over a near-silent room tone.
+- **Collection:** each member's score, cross-faded with the picture.
+
+## Offline: WAV for videos, without re-rendering the picture
+
+`savers-preview audio --scene twilight --seconds 90 --seed 1 --out twilight.wav` renders the score alone (44,100 Hz stereo, 16-bit), with the same settings options as `frames`. With `--loop`, it renders a warm-up loop first and writes the second, so the reverb tail of the end flows into the start, and the file loops without a click (the score's schedule is periodic at the loop length; the Twilight loop is 90 s, the Maze loop its walk's length from `--loop`). A test compares the last and first samples and the energy across the seam.
+
+The owner's workflow, keeping the silent videos:
+
+```sh
+savers-preview audio --scene twilight --seed 1 --set Detail=3 --from 0 --seconds 90 --out twilight.wav
+ffmpeg -i twilight-4k.mp4 -i twilight.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k -shortest twilight-4k-audio.mp4
+ffmpeg -i twilight-1080p.mp4 -i twilight.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k -shortest twilight-1080p-audio.mp4
+```
+
+The same for `maze.mp4` (with `--set LoopMaze=1 --loop --from 2`, as the video was rendered), `collection.mp4` (`--set Duration=30`) and `ghostwriter.mp4`. The audio starts at the video's first frame (the same `--from`), including the saver's one-second fade-up.
+
+## At run time: the Win32 savers
+
+- **Output:** `waveOutOpen`, `waveOutPrepareHeader`, `waveOutWrite`, `waveOutUnprepareHeader`, `waveOutReset` and `waveOutClose` from `winmm.dll` (all on Windows 95 and ReactOS, added to `imports.allow`), 22,050 Hz stereo 16-bit PCM, three buffers of 300 ms. No thread: the frame loop refills any buffer the device has finished (`WHDR_DONE`) before drawing, and `MsgWaitForMultipleObjects` already wakes it often. 0.9 s of buffering covers a slow frame on a Pentium III; an underrun is silence, never a click (each buffer starts and ends on a short ramp when the previous one was late).
+- **Cost:** synthesis about 3 to 6 ms of a Pentium III per 300 ms buffer for Twilight (1 to 2% of the CPU), less for the others; about 15 to 25 KB of code per `.scr` (well inside the 384 KiB guard).
+- **Settings:** `Sound` (0 or 1) and `Volume` (0 to 100), in every saver's key; the Collection's apply to all its members. **Default: `Sound` off, `Volume` 40** (SAV-D35, a recommendation for the owner to confirm): a screensaver that starts making sound on its own at an idle desk, in an office or in a virtual machine, surprises people, and the stock savers are silent. The dialog shows "Play sound" and the volume slider at the top of the Look group, so turning it on is one click.
+- **Preview (`/p`) is always silent;** so is `/c`. A saver ending on input stops the sound at once (`waveOutReset`), with no tail; `TerminateProcess` from Winlogon cuts it too, which is acceptable for ambience at that level.
+- **No device:** if `waveOutOpen` fails (no sound card, as in many virtual machines), the saver runs silently.
+
+## Testing
+
+- Host: golden checksums of short renders per scene and palette (as the picture goldens), the loop-seam test, a level test (peak under -3 dBFS, no sample-to-sample jump over a threshold, RMS within a band), and a check that the limiter never engages hard.
+- Wine: a run with sound on, checking it starts, ends and does not starve the frame rate (frame times logged with sound on and off).
+- ReactOS guest: QEMU 9 offers `AC97`, `ES1370`, `sb16` and `intel-hda`; ReactOS 0.4.16 has drivers for **AC97** (`drivers/wdm/audio/drivers/ac97`), **SB16**, CMI and an HD Audio bus driver. The guest run adds `-device AC97` with QEMU's `-audiodev wav,id=snd,path=...` back end, so the guest's sound is captured to a file on the host with no speakers, and the WAV is checked for the score (not silence, no dropouts at the expected level).
+- Linux GPU edition (WP-gpu-linux): the same core synth, output through `cpal` (ALSA, and PipeWire through its ALSA plug-in) on its own thread with a ring buffer; xscreensaver hacks are expected to be silent, so the hack mode keeps sound off unless asked.
+
+## Work packages
+
+1. **WP-audio-core** (area `core`, Opus or Sonnet with Opus review): `savers-core::audio`: tables, voices, envelopes, filter, FDN reverb, limiter; the `AudioScene` trait (render N frames into an `i16` buffer from a sample clock); Twilight's and the Maze's scores reading their timelines; tests (goldens, levels, seam). The two scores are the creative core and need an Opus pass on how they sound (rendered to WAV and listened to through the owner's review).
+2. **WP-audio-preview** (area `repo`): `savers-preview audio` with `--loop`; `scripts/preview-audio.sh` that renders and remuxes onto the existing videos as `*-audio.mp4` (AAC 256 kbps, `-c:v copy`), keeping the silent files.
+3. **WP-audio-scores-2** (area `core`): Ink, Cracktro's chiptune, Ghostwriter's ticks, the Collection's cross-fade.
+4. **WP-audio-win32** (area `win32`, after 1): waveOut output in the frame loop, `Sound` and `Volume` in the settings table (the dialog v2 builder adds them to the Look group), silence in `/p`, the Wine check, the ReactOS guest capture with AC97.
+5. **WP-audio-linux** (area `gpu`, with or after WP-gpu-linux): `cpal` output for the GPU edition.
