@@ -57,5 +57,6 @@ Each has a default in place; the file or setting named swaps it.
 - **The Cracktro's music:** a gentle generated chiptune at the quiet default; `audio::score_for` can return none for silence.
 - **Ghostwriter's key ticks:** very quiet; their gain is in `audio/ghostwriter.rs`.
 - **Packing:** the owner's answers (no saver selected, the compact image keeps the five, ReactOS's own savers stay in the full image, Ghostwriter in Display Properties waits for the installer's `{windows}` and `{system}`) are in `docs/packing.md` (Owner decisions).
+- **Linux packages, monitors and the scroller:** planned in `docs/linux-packages.md` (WP-LINUX-PKG, WP-GPU-MONITORS, WP-LINUX-DESKTOP, WP-SCROLL; SAV-D63 to SAV-D76), each default with its swap in that file's owner decisions.
 - **Twilight's loop:** stays as it is (a designed fade through black at the 90-second wrap, not pixel-periodic), as the owner decided.
 - **Not yet verified:** sound in the ReactOS guest (AC97 capture, with WP-audio-win32), the pointer-hiding fix in the guest, Windows 95 itself, real hardware, and a Pentium III's real frame rate (the estimates come from a reference loop).
