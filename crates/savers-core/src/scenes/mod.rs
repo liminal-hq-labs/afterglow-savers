@@ -12,9 +12,12 @@ use crate::scene::Scene;
 use crate::settings::{SaverKind, Settings};
 
 pub mod ink;
+pub mod twilight;
 
 /// Makes the scene for a saver at a render size.
 pub fn build(kind: SaverKind, settings: &Settings, seed: u32, w: usize, h: usize) -> Box<dyn Scene> {
-	let _ = kind;
-	Box::new(ink::Ink::new(settings, seed, w, h))
+	match kind {
+		SaverKind::Twilight => Box::new(twilight::Twilight::new(settings, seed, w, h)),
+		_ => Box::new(ink::Ink::new(settings, seed, w, h)),
+	}
 }

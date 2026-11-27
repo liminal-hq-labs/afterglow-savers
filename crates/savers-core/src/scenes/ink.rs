@@ -19,7 +19,7 @@ use alloc::vec::Vec;
 
 use crate::colour::{self, mix, mixf, scale};
 use crate::frame::Frame;
-use crate::math::{TAU, cos, exp, floor, fract, sin, smoothstep, sqrt};
+use crate::math::{TAU, cos, exp, floor, fract, sin, smoothstep};
 use crate::noise::noise2;
 use crate::palette::Palette;
 use crate::rng::Rng;
@@ -37,6 +37,10 @@ struct Sheet {
 	size: usize,
 	shift: u32,
 	px: Vec<u32>,
+	/// The marbling operations, kept until every row is painted.
+	ops: Vec<Op>,
+	/// The next row to paint; `size` when the sheet is done.
+	next_row: usize,
 }
 
 enum Op {
@@ -163,7 +167,20 @@ impl Sheet {
 			}
 		}
 		let ground = if pal.light { pal.ground() } else { pal.n(900) };
-		let mut px = vec![ground; size * size];
+		Sheet {
+			size,
+			shift: size.trailing_zeros(),
+			px: vec![ground; size * size],
+			ops,
+			next_row: 0,
+		}
+	}
+
+	/// Paints up to `rows` more rows: each texel undoes the operations from the last, and the first drop it lands in is its
+	/// colour.
+	fn paint(&mut self, rows: usize) {
+		let size = self.size;
+		let s = size as f32;
 		let half = s * 0.5;
 		let wrap = |d: f32| {
 			if d > half {
@@ -174,10 +191,12 @@ impl Sheet {
 				d
 			}
 		};
-		for (i, texel) in px.iter_mut().enumerate() {
+		let end = (self.next_row + rows).min(size);
+		for i in self.next_row * size..end * size {
+			let texel = &mut self.px[i];
 			let mut x = (i % size) as f32 + 0.5;
 			let mut y = (i / size) as f32 + 0.5;
-			for op in ops.iter().rev() {
+			for op in self.ops.iter().rev() {
 				match *op {
 					Op::Drop { cx, cy, r2, colour } => {
 						let dx = wrap(x - cx);
@@ -187,7 +206,16 @@ impl Sheet {
 							*texel = colour;
 							break;
 						}
-						let k = sqrt(1.0 - r2 / d2);
+						// √(1 - r²/d²): a series far from the drop, one Newton step from a bit-level guess near it. A part in a
+						// thousand is far below a texel.
+						let q = r2 / d2;
+						let k = if q < 0.06 {
+							1.0 - q * (0.5 + 0.125 * q)
+						} else {
+							let a = 1.0 - q;
+							let g = f32::from_bits((a.to_bits() >> 1).wrapping_add(0x1FBD_1DF5));
+							0.5 * (g + a / g)
+						};
 						x = cx + dx * k;
 						y = cy + dy * k;
 					}
@@ -200,7 +228,9 @@ impl Sheet {
 					} => {
 						let across = if vertical { x } else { y };
 						let d = (fract((across - offset) / spacing + 0.5) - 0.5).abs() * spacing;
-						let shift = amp * exp(-d * falloff);
+						let fall = d * falloff;
+						// e^-x for the comb's falloff, as a cheap rational form; the shape matters, not the exact curve.
+						let shift = amp / (1.0 + fall + 0.5 * fall * fall + 0.17 * fall * fall * fall);
 						if vertical {
 							y -= shift;
 						} else {
@@ -224,10 +254,9 @@ impl Sheet {
 				y -= s * floor(y / s);
 			}
 		}
-		Sheet {
-			size,
-			shift: size.trailing_zeros(),
-			px,
+		self.next_row = end;
+		if end == size {
+			self.ops = Vec::new();
 		}
 	}
 
@@ -371,8 +400,10 @@ impl Ink {
 		let turbulence = settings.get(Key::Turbulence) as f32 / 100.0;
 		let mut rng = Rng::new(seed as u64 ^ 0x1A4B_0000_0000);
 		let size = if detail <= Detail::Low { 256 } else { 512 };
+		// Layer B is the one on screen first; layer A's sheet is painted a few rows a frame while its weight is still near zero.
 		let s0 = Sheet::new(size, &pal, thickness, &mut rng.fork(1));
-		let s1 = Sheet::new(size, &pal, thickness, &mut rng.fork(2));
+		let mut s1 = Sheet::new(size, &pal, thickness, &mut rng.fork(2));
+		s1.paint(size);
 		let grid = if detail == Detail::Ultra { GRID_FINE } else { GRID_FINE * 2 };
 		let gw = w / grid + 2;
 		let gh = h / grid + 2;
@@ -596,6 +627,11 @@ impl Scene for Ink {
 					self.layers[which].reset(w, h, &mut r);
 				}
 			}
+		}
+		let sheet = &mut self.layers[0].sheet;
+		if sheet.next_row < sheet.size {
+			let rows = (sheet.size / 48).max(1);
+			sheet.paint(rows);
 		}
 		self.flow(t);
 		if cx.dt > 0.0 {

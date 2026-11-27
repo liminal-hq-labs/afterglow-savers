@@ -200,26 +200,28 @@ fn bench(o: &Opts) -> Result<(), String> {
 			store.set_dword("RenderScale", scale);
 			store.set_dword("Detail", detail);
 			let settings = Settings::load(o.kind, &store);
+			let made = Instant::now();
 			let mut saver = make(o.kind, &settings, o.seed, o.size);
+			let start_ms = made.elapsed().as_secs_f64() * 1000.0;
 			let (rw, rh) = render_size(&settings, o.size.0, o.size.1, false);
-			let dt = 1.0 / 30.0;
-			// Warm up past the first frames, then time from a point in the middle of the storyboard.
+			// Frames are taken a second apart (each simulated as a 0.1 s step), so the timing covers the storyboard's shots and
+			// phases rather than its first moments.
 			let mut t = 0.0;
-			for _ in 0..5 {
+			for _ in 0..3 {
 				saver.at(t);
-				t += dt;
+				t += 1.0;
 			}
 			let s = Instant::now();
 			for _ in 0..o.frames {
 				std::hint::black_box(saver.at(t));
-				t += dt;
+				t += 1.0;
 			}
 			let ms = s.elapsed().as_secs_f64() * 1000.0 / o.frames as f64;
 			let p3 = ms * ratio;
 			let names = ["Low", "Medium", "High", "Ultra"];
 			let _ = writeln!(
 				stdout,
-				"| {scale}% | {} | {rw}x{rh} | {ms:.2} | {:.0} | {p3:.0} | {:.1} |",
+				"| {scale}% | {} | {rw}x{rh} | {start_ms:.0} | {ms:.2} | {:.0} | {p3:.0} | {:.1} |",
 				names[detail as usize],
 				1000.0 / ms,
 				1000.0 / p3

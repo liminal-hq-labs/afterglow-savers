@@ -54,7 +54,7 @@ Two settings set the cost, and both are in every saver's settings:
 
 *A tiny painted planet turning in a luminous atmosphere, its day and night sweeping round it, moons and satellites crossing, the camera drifting like a slow documentary.*
 
-**How it works.** The planet is generated from a seed as soft colour fields rather than a photograph: an equirectangular map of continents (domain-warped noise, cut into stepped bands, so coasts and highlands read as layered paper or voxel steps), seas, and ice; a separate cloud map in drifting bands. A lookup table maps each point of the disc to a latitude and longitude once; turning the planet is an offset in longitude, and tilting it a 2D rotation of the disc. Lighting is a soft wrap of the light direction, with the terminator tinted through the palette's glow hues (rose, then orange, then purple into night) and a few warm lights on the night side. The atmosphere is a glow both inside the limb (a fresnel tint) and outside it (a soft falloff), brightest on the day side and pink at the terminator. Behind it: a painterly nebula in the palette's hues and a sparse twinkling starfield.
+**How it works.** The planet is generated from a seed as soft colour fields rather than a photograph: an equirectangular map of continents (domain-warped noise cut into stepped terraces, each step with a lit rim and a shadowed foot like contour lines in a painting, dry and wet land from a second field, coastal shelves, brush strokes along the latitude lines), seas, ice and night lights; a separate cloud map in drifting bands. Each pixel of the disc turns its normal into the planet's frame (the camera's tilt and roll) and reads latitude (an arcsine table) and longitude (the core's `atan2`); the spin is an offset in longitude. Light is a colour multiplied into the ground: warm white by day, orange then rose at the terminator, purple dusk, indigo night, with warm lights on the night side. The atmosphere is a glow both inside the limb (a fresnel tint) and outside it (a soft falloff), brightest on the day side and pink at the terminator. Behind it: a painterly nebula in the palette's hues and a sparse twinkling starfield.
 
 **Second by second** (one 90-second loop of four shots; the seed changes the planet, the moons and the shot order):
 
@@ -67,7 +67,7 @@ Two settings set the cost, and both are in every saver's settings:
 
 **Settings.** Planet seed (0 means a new world each run), atmosphere strength, moons (0–2).
 
-**Ladder.** Low: no clouds' shadows, one cloud layer, nebula at quarter resolution, two moons at most. Medium: cloud shadows. High: the night-side lights and brush-stroke texture. Ultra: a second, slower cloud layer and a soft specular sheen on the seas.
+**Ladder.** Low: 256 × 128 maps read nearest, no cloud shadows, no night lights, bloom at an eighth. Medium: 512 × 256 maps read bilinear, cloud shadows. High: the night-side lights. Ultra: the seas' sheen. Start-up paints the maps: about 50 ms at Low and 150 ms at Ultra on the development host.
 
 ## Cracktro
 

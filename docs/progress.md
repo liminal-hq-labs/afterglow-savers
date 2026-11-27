@@ -24,6 +24,17 @@ The resumable log of where the work stands. Newest state first; each phase lists
 
 The 25% Low floor holds. 100% Ultra misses 30 fps at 1280 × 720 on one host core; the output pass (enlargement, vignette and grain at the full size) and the two-layer advection dominate. Rendering bands on several threads in the x86_64 build is the planned fix.
 
+**Twilight** and **Ink** at 800 × 600, frames sampled a second apart across the storyboard (host reference loop about 0.62 ms; a Pentium III estimated about 12 times slower):
+
+| Scene | Rung | Start ms | Host ms | Host fps | P3 est. fps |
+| --- | --- | --- | --- | --- | --- |
+| Twilight | 25% Low | 51 | 3.2 | 313 | 26 |
+| Twilight | 100% Ultra | 212 | 15.3 | 65 | 5 |
+| Ink | 25% Low | 53 | 3.8 | 266 | 22 |
+| Ink | 100% Ultra | 203 | 21.7 | 46 | 4 |
+
+Ink paints its second sheet a few rows a frame while it is invisible, which halves its start-up.
+
 ## Open questions for the owner
 
 - Quill Ghostwriter could be started from Quill's About box (a click on the nib); that is Quill's to decide.
