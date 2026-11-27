@@ -104,7 +104,7 @@ Then the cycle repeats. The default message reads, in part: "Afterglow for React
 - **0–4 s.** Fade up inside the maze, facing down a corridor. Fog, quiet.
 - **4–30 s.** The camera glides forward along the solution path, easing into each turn on a smooth curve, looking slightly ahead into the turn. Crenellated wall tops step against the sky.
 - **30–60 s.** A long corridor opens with a sun window at its end. **Wow:** the light shafts fan out of it across the polished floor and the reflection doubles the window.
-- **Through the walk.** Now and then the path enters a dead end and turns round in a slow arc, or pauses at a junction and looks both ways. The camera never stops moving for more than a second.
+- **Through the walk.** Up to twice a maze, the path turns into a short dead-end branch (often one ending in a sun window), walks up it on one side of the corridor and comes back round in a U-turn arc on the other. The camera never stops moving.
 - **The exit.** The last corridor ends in the largest window; the camera walks into the light, the screen blooms to the window's colour and fades into a new maze.
 
 **Palette.** Stone in the neutrals lifted towards the first glow hue, brick in the warm glow hue darkened, glass in the cool hues, mortar dark, the sky from the palette's dusk gradient, the windows in the sun hue with the glow hues in the stepped rings.

@@ -296,10 +296,71 @@ impl Maze {
 			}
 		}
 		// The path: cell centres, ending inside the exit window's light, smoothed by a Catmull-Rom spline and resampled evenly.
-		let mut pts: Vec<(f32, f32)> = cells
-			.iter()
-			.map(|&c| ((2 * (c % n) + 1) as f32 + 0.5, (2 * (c / n) + 1) as f32 + 0.5))
-			.collect();
+		// Now and then the walk turns into a short dead-end branch and comes back round in a U-turn arc: in on one side of the
+		// corridor, round, and out on the other.
+		let centre = |c: usize| ((2 * (c % n) + 1) as f32 + 0.5, (2 * (c / n) + 1) as f32 + 0.5);
+		let on_path: Vec<bool> = {
+			let mut v = vec![false; n * n];
+			for &c in &cells {
+				v[c] = true;
+			}
+			v
+		};
+		let open = |c: usize, dx: i32, dy: i32| {
+			let (cx, cy) = ((c % n) as i32, (c / n) as i32);
+			let (nx, ny) = (cx + dx, cy + dy);
+			nx >= 0
+				&& ny >= 0 && (nx as usize) < n
+				&& (ny as usize) < n
+				&& blocks[((2 * cy + 1 + dy) as usize) * g + (2 * cx + 1 + dx) as usize] == EMPTY
+		};
+		let mut pts: Vec<(f32, f32)> = Vec::new();
+		let mut detours = 0;
+		for (i, &c) in cells.iter().enumerate() {
+			pts.push(centre(c));
+			if detours >= 2 || i == 0 || i + 1 == cells.len() || rng.below(3) != 0 {
+				continue;
+			}
+			for (dx, dy) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+				if !open(c, dx, dy) {
+					continue;
+				}
+				let next = ((c / n) as i32 + dy) as usize * n + ((c % n) as i32 + dx) as usize;
+				if on_path[next] {
+					continue;
+				}
+				// Follow the branch while it runs straight on with no side ways; take it if it ends within three cells.
+				let mut branch = vec![next];
+				let mut cur = next;
+				while branch.len() <= 3 && open(cur, dx, dy) {
+					let side = open(cur, dy, dx) || open(cur, -dy, -dx);
+					if side {
+						break;
+					}
+					cur = ((cur / n) as i32 + dy) as usize * n + ((cur % n) as i32 + dx) as usize;
+					branch.push(cur);
+				}
+				let ends = !open(cur, dx, dy) && !open(cur, dy, dx) && !open(cur, -dy, -dx);
+				if !ends || branch.len() > 3 {
+					continue;
+				}
+				let (nx, ny) = (-dy as f32 * 0.22, dx as f32 * 0.22);
+				for &b in &branch[..branch.len() - 1] {
+					let p = centre(b);
+					pts.push((p.0 + nx, p.1 + ny));
+				}
+				let end = centre(cur);
+				pts.push((end.0 + nx - dx as f32 * 0.2, end.1 + ny - dy as f32 * 0.2));
+				pts.push((end.0 - nx - dx as f32 * 0.2, end.1 - ny - dy as f32 * 0.2));
+				for &b in branch[..branch.len() - 1].iter().rev() {
+					let p = centre(b);
+					pts.push((p.0 - nx, p.1 - ny));
+				}
+				pts.push(centre(c));
+				detours += 1;
+				break;
+			}
+		}
 		// Midpoints between cells keep the spline inside the corridors.
 		let mut dense = Vec::new();
 		for w in pts.windows(2) {
