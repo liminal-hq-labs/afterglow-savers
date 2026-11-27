@@ -234,7 +234,7 @@ fn field_height(field: &Field, inner: i16) -> i16 {
 /// Which group a setting belongs to: 0 Look, 1 Quality, 2 Finish, 3 the scene's own.
 fn section(key: Key) -> u8 {
 	match key {
-		Key::Palette | Key::Light | Key::Speed => 0,
+		Key::Sound | Key::Volume | Key::Palette | Key::Light | Key::Speed => 0,
 		Key::RenderScale | Key::Detail | Key::MaxFps => 1,
 		Key::Bloom | Key::Streaks | Key::Vignette | Key::Grain | Key::Letterbox | Key::Fades => 2,
 		_ => 3,

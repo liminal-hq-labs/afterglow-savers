@@ -184,3 +184,36 @@ fn many_mazes_start_and_paint() {
 		assert!(mean > 3, "seed {seed}: the first frames are blank (mean luma {mean})");
 	}
 }
+
+/// The scores are reproducible, stay below full scale with no clicks, and are never silent once faded in.
+#[test]
+fn scores_are_reproducible_and_gentle() {
+	use savers_core::audio::{Engine, score_for};
+	for kind in [SaverKind::Twilight, SaverKind::Maze] {
+		let render = || {
+			let mut s = Settings::defaults(kind);
+			s.set(Key::LoopMaze, 1);
+			let mut scene = build(kind, &s, 3, 32, 18);
+			let score = score_for(kind, &s, 3, 22_050).expect("a score");
+			let mut engine = Engine::new(22_050, score, 1.0, 1.0);
+			let mut out = vec![0i16; 22_050 * 2 * 8];
+			engine.render(&mut out, &mut |t| scene.cues(t));
+			out
+		};
+		let a = render();
+		assert_eq!(a, render(), "{kind:?}: the same seed gives the same samples");
+		let peak = a.iter().map(|&v| (v as i32).abs()).max().unwrap_or(0);
+		assert!(peak < 23_000, "{kind:?}: peak {peak} is within 3 dB of full scale");
+		let step = a
+			.chunks(2)
+			.collect::<Vec<_>>()
+			.windows(2)
+			.map(|w| (w[0][0] as i32 - w[1][0] as i32).abs())
+			.max()
+			.unwrap_or(0);
+		assert!(step < 4_000, "{kind:?}: a jump of {step} between samples is a click");
+		let tail = &a[a.len() / 2..];
+		let rms = (tail.iter().map(|&v| (v as f64).powi(2)).sum::<f64>() / tail.len() as f64).sqrt();
+		assert!(rms > 100.0, "{kind:?}: RMS {rms:.0} is near silence");
+	}
+}

@@ -137,6 +137,27 @@ impl Scene for Twilight {
 		let _ = self.seed;
 	}
 
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		let cam = crate::twilight_shared::camera(t as f32);
+		let total = crate::twilight_shared::total_length();
+		let loop_t = crate::math::fract(t as f32 / total) * total;
+		let start: f32 = crate::twilight_shared::SHOTS[..cam.shot].iter().map(|s| s.len).sum();
+		// The sun clears the limb in the night-side drift, where it starts behind the planet.
+		let sun = if cam.shot == 3 {
+			saturate((cam.sun_distance - 0.95) / 0.15)
+		} else {
+			0.0
+		};
+		crate::audio::Cues {
+			t,
+			fade: cam.fade,
+			shot: cam.shot,
+			shot_t: loop_t - start,
+			sun,
+			..crate::audio::Cues::default()
+		}
+	}
+
 	fn hints(&self, cx: &Ctx) -> Hints {
 		let fade = camera(cx.t as f32).fade;
 		Hints {

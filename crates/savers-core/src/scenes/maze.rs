@@ -714,16 +714,7 @@ fn paint_sky(pal: &Palette, h: usize, rng: &mut Rng) -> (Vec<u32>, usize, usize)
 impl Scene for MazeScene {
 	fn render(&mut self, cx: &Ctx, out: &mut Frame) {
 		let t = cx.t as f32;
-		// Through the portal: the walk begins again, in the same maze or the one prepared beyond it.
-		while t - self.start >= self.maze.duration {
-			self.start += self.maze.duration;
-			if !self.loop_same {
-				self.maze_no += 1;
-				let mut r = self.rng.fork(101 + self.maze_no);
-				let fresh = Maze::new(self.size, &mut r);
-				self.maze = core::mem::replace(self.next.as_mut().expect("a next maze when not looping"), fresh);
-			}
-		}
+		self.advance(t);
 		let lt = t - self.start;
 		let (px, py, heading) = self.maze.camera(lt);
 		// A gentle walking bob, still at both ends of the walk so the portal's seam is exact.
@@ -787,6 +778,50 @@ impl Scene for MazeScene {
 		}
 	}
 
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		let tf = t as f32;
+		self.advance(tf);
+		let lt = tf - self.start;
+		let d = self.maze.duration;
+		let (px, py, heading) = self.maze.camera(lt);
+		let (cxp, cyp) = self.maze.portal;
+		let (pdx, pdy) = (self.maze.portal_dir.0 as f32, self.maze.portal_dir.1 as f32);
+		let along = (cxp - px) * pdx + (cyp - py) * pdy;
+		// Holding: the walk barely moves (the hesitation before the portal).
+		let (ax, ay, _) = self.maze.camera(lt + 0.2);
+		let moving = ((ax - px) * (ax - px) + (ay - py) * (ay - py)) > 0.0004;
+		// The whoosh spans the last 0.7 s before the plane and the first 0.7 s after it.
+		let through = if lt > d - 0.7 {
+			(lt - (d - 0.7)) / 1.4
+		} else if lt < 0.7 && self.start > 0.0 {
+			0.5 + lt / 1.4
+		} else {
+			0.0
+		};
+		// How far the view runs before a wall, from a ray straight ahead.
+		let g = 2 * self.maze.n + 1;
+		let (dx, dy) = (cos(heading), sin(heading));
+		let mut run = 0.0;
+		while run < 10.0 {
+			run += 0.25;
+			let (x, y) = (floor_i(px + dx * run), floor_i(py + dy * run));
+			if x < 0 || y < 0 || x as usize >= g || y as usize >= g || self.maze.blocks[y as usize * g + x as usize] != EMPTY {
+				break;
+			}
+		}
+		let cell = floor_i(py).clamp(0, g as i32 - 1) as usize * g + floor_i(px).clamp(0, g as i32 - 1) as usize;
+		crate::audio::Cues {
+			t,
+			fade: 1.0,
+			portal: saturate(1.0 - along / 6.0) * if along > -0.01 { 1.0 } else { 0.0 },
+			hold: !moving && along < 1.5 && along > 0.3,
+			through: saturate(through),
+			open: saturate(run / 8.0),
+			window: self.maze.glow[cell],
+			..crate::audio::Cues::default()
+		}
+	}
+
 	fn loop_length(&self) -> Option<f64> {
 		if self.loop_same {
 			Some(self.maze.duration as f64)
@@ -806,6 +841,19 @@ impl Scene for MazeScene {
 }
 
 impl MazeScene {
+	/// Brings the walk up to scene time `t`: through the portal, it begins again, in the same maze or the one prepared beyond it.
+	fn advance(&mut self, t: f32) {
+		while t - self.start >= self.maze.duration {
+			self.start += self.maze.duration;
+			if !self.loop_same {
+				self.maze_no += 1;
+				let mut r = self.rng.fork(101 + self.maze_no);
+				let fresh = Maze::new(self.size, &mut r);
+				self.maze = core::mem::replace(self.next.as_mut().expect("a next maze when not looping"), fresh);
+			}
+		}
+	}
+
 	/// The portal's face at a point: (x across from the centre, y up from the eye's height) in blocks. Returns the colour, or
 	/// `None` inside the aperture, where the view through the portal shows.
 	fn portal_face(&self, x: f32, y: f32, t: f32) -> Option<u32> {

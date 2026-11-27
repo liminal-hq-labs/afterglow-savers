@@ -19,7 +19,7 @@ Four screensavers and a collection in the Afterglow colours, for the Afterglow-t
 
 There is also a fifth, for Quill users to find: **Quill Ghostwriter**, a document that writes itself. It ships with Quill, not here.
 
-Every saver is drawn by a software renderer on the CPU (no OpenGL), in a tiny `no_std` Rust program with no C runtime that runs on a Pentium. Each has a quality ladder, from a quarter-resolution render for a Pentium III to full resolution with every effect on a modern machine, and the same finishing: glow, light streaks, vignette, film grain, optional letterbox.
+Every saver plays a quiet generated soundtrack while it runs (untick "Play sound" in its settings to keep it silent; the preview in Display Properties is always silent). Every saver is drawn by a software renderer on the CPU (no OpenGL), in a tiny `no_std` Rust program with no C runtime that runs on a Pentium. Each has a quality ladder, from a quarter-resolution render for a Pentium III to full resolution with every effect on a modern machine, and the same finishing: glow, light streaks, vignette, film grain, optional letterbox.
 
 > **Status:** experimental, local only, no releases. All four scenes, the Collection and Quill Ghostwriter render on the host and are tested; the Windows `.scr` programs are being built, then run in the ReactOS guest.
 

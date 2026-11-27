@@ -68,6 +68,8 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 
 | Value | Meaning | Range | Default |
 | --- | --- | --- | --- |
+| `Sound` | Play the saver's generated soundtrack (never in the preview or the dialog; silent without a sound device) | 0–1 | 1 |
+| `Volume` | Its level, percent | 0–100 | 28 |
 | `RenderScale` | Percent of the window drawn | 25, 50, 75, 100 | 50 |
 | `Detail` | 0 Low, 1 Medium, 2 High, 3 Ultra | 0–3 | 1 |
 | `Speed` | Percent of normal speed | 25–200 | 100 |

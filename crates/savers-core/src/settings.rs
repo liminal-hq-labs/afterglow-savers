@@ -108,9 +108,11 @@ pub enum Key {
 	Acts,
 	Sun,
 	LoopMaze,
+	Sound,
+	Volume,
 }
 
-pub const KEY_COUNT: usize = Key::LoopMaze as usize + 1;
+pub const KEY_COUNT: usize = Key::Volume as usize + 1;
 
 /// How the dialog shows a field.
 #[derive(Clone, Copy, Debug)]
@@ -168,6 +170,9 @@ const MOONS: &[(&str, u32)] = &[("None", 0), ("One", 1), ("Two", 2)];
 
 /// The settings every saver has (SPEC section 7).
 const COMMON: &[Field] = &[
+	// SAV-D35: sound on by default, quietly; one click to turn it off. The preview and the dialog are always silent.
+	f(Key::Sound, "Sound", "Play sound (quietly)", 0, 1, 1, Control::Check),
+	f(Key::Volume, "Volume", "Volume", 0, 100, 28, Control::Slider),
 	f(Key::Palette, "Palette", "Palette", 0, 4, 0, Control::Choice(PALETTES)),
 	f(Key::Light, "Light", "Light (day) mode", 0, 1, 0, Control::Check),
 	f(Key::Speed, "Speed", "Speed", 25, 200, 100, Control::Slider),

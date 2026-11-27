@@ -52,6 +52,16 @@ pub trait Scene {
 		None
 	}
 
+	/// What the score should know about the moment `t` (scene seconds), without drawing: shots, fades, the portal (SAV-D34). A scene
+	/// may advance its own state to `t`, as drawing would; times must not go backwards.
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		crate::audio::Cues {
+			t,
+			fade: 1.0,
+			..crate::audio::Cues::default()
+		}
+	}
+
 	/// How to finish the frame just drawn.
 	fn hints(&self, _cx: &Ctx) -> Hints {
 		Hints::default()
