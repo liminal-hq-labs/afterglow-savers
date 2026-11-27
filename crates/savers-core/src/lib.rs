@@ -14,6 +14,7 @@ extern crate alloc;
 
 pub mod audio;
 pub mod bands;
+pub mod banner;
 pub mod bench;
 pub mod colour;
 pub mod font;
@@ -27,4 +28,5 @@ pub mod saver;
 pub mod scene;
 pub mod scenes;
 pub mod settings;
+pub mod swatch;
 pub mod twilight_shared;

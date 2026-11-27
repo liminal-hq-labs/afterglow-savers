@@ -5,12 +5,13 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 
+use savers_core::banner::{self, Banner};
 use savers_core::palette::{Palette, PaletteId};
 use savers_core::saver::{Saver, palette_for, render_size};
 use savers_core::settings::{Control, Key, SaverKind, Settings, SettingsStore, fields};
+use savers_core::swatch;
 
 use crate::ansi::{number_text, to_ansi};
 use crate::clock::Clock;
@@ -21,6 +22,10 @@ use crate::sys::{self, Handle};
 use crate::template::{CANCEL_ID, DEFAULTS_ID, OK_ID, section};
 use crate::template_v2::{self, BANNER_ID, HEADER_BASE, HEADERS, NEW_SEED_ID, PREVIEW_ID, swatch_id};
 
+/// `DrawText` flags for the swatch names (kept here, beside their one use).
+const DT_NOCLIP: u32 = 0x0100;
+const DT_CALCRECT: u32 = 0x0400;
+
 /// What the dialog returns when it could not set itself up, so the plain dialog takes over.
 const FALLBACK: isize = 99;
 const TIMER_ID: usize = 1;
@@ -28,19 +33,6 @@ const TIMER_ID: usize = 1;
 const FRAME_MS: u32 = 50;
 const SLOW_MS: u32 = 100;
 const SLOW_FRAME: f64 = 0.15;
-
-/// Placeholder: the moment of each scene the banner shows, in seconds of scene time. WP-dialog-v2-art replaces these with the moments
-/// it picks (Ink's feathering, Twilight's push-in, the cracktro's copper bars, a maze vista).
-fn banner_moment(kind: SaverKind) -> f64 {
-	match kind {
-		SaverKind::Ink => 3.0,
-		SaverKind::Twilight => 3.0,
-		SaverKind::Cracktro => 3.0,
-		SaverKind::Maze => 3.0,
-		SaverKind::Collection => 3.0,
-		SaverKind::Ghostwriter => 3.0,
-	}
-}
 
 /// The scene running in the preview pane, and the settings it was last given.
 struct Preview {
@@ -50,19 +42,15 @@ struct Preview {
 	height: usize,
 }
 
-/// The banner picture: a frame darkened towards its left, where the title sits.
-struct Banner {
-	width: usize,
-	height: usize,
-	pixels: Vec<u32>,
-}
-
 struct State {
 	kind: SaverKind,
 	make: MakeScene,
 	settings: RefCell<Settings>,
 	preview: RefCell<Option<Preview>>,
+	/// The banner's picture (`savers_core::banner`), and whether it is out of date: it is rendered on the timer after the dialog
+	/// shows and after a change of palette or light mode, so the dialog never waits for it.
 	banner: RefCell<Option<Banner>>,
+	banner_stale: Cell<bool>,
 	clock: Clock,
 	last: Cell<f64>,
 	/// A seed for a preview whose setting is 0 ("a new one each time"), chosen once so that the preview does not change on every edit.
@@ -266,91 +254,83 @@ fn draw_swatch(state: &State, item: &sys::DrawItemStruct) {
 	let palette = Palette::new(PaletteId::from_u32(value), state.light.get());
 	// SAFETY: a plain integer in the window's user data.
 	let chosen = unsafe { sys::GetWindowLongPtr(item.window, sys::GWL_USERDATA) } == 1;
-	// SAFETY: a plain system colour query.
-	let face = unsafe { sys::GetSysColor(sys::COLOR_BTNFACE) };
-	fill(dc, rect.left, rect.top, rect.right, rect.bottom, face);
-
-	// The tile, inset to leave room for the ring.
-	let (left, top, right, bottom) = (rect.left + 3, rect.top + 3, rect.right - 3, rect.bottom - 3);
-	let tile_width = right - left;
-	let tile_height = bottom - top;
-	fill(dc, left, top, right, bottom, colour(palette.neutral[8]));
-	// Three stepped bands rising from the ground's midline: the glow hues, tallest first.
-	let base = top + tile_height * 55 / 100;
-	let band = tile_width / 3;
-	for (n, &hue) in palette.glow.iter().take(3).enumerate() {
-		let band_left = left + band * n as i32;
-		let band_right = if n == 2 { right } else { band_left + band };
-		let band_top = top + 2 + (base - top - 2) * n as i32 / 3;
-		fill(dc, band_left, band_top, band_right, base, colour(hue));
-	}
+	// SAFETY: plain system colour queries.
+	let (face, ink) = unsafe { (sys::GetSysColor(sys::COLOR_BTNFACE), sys::GetSysColor(sys::COLOR_BTNTEXT)) };
+	let (width, height) = ((rect.right - rect.left).max(1), (rect.bottom - rect.top).max(1));
+	let mut pixels = alloc::vec![0u32; (width * height) as usize];
+	let label = swatch::draw(
+		&mut pixels,
+		width as usize,
+		height as usize,
+		&palette,
+		colour(face),
+		colour(ink),
+		chosen,
+	);
+	stretch(dc, width, height, width as usize, height as usize, &pixels);
+	let label_rect = sys::Rect {
+		left: rect.left + label.label_left,
+		top: rect.top + label.label_top,
+		right: rect.left + label.label_right,
+		bottom: rect.top + label.label_bottom,
+	};
+	// SAFETY: a plain message to the dialog for its own font.
+	let font = unsafe { sys::SendMessageA(sys::GetParent(item.window), sys::WM_GETFONT, 0, 0) } as Handle;
+	let text = swatch::short_name(name);
+	// The name may be a pixel or two wider than a narrow swatch; it is centred and left unclipped, so only the button's edge trims it.
 	draw_text(
 		dc,
-		name,
-		&sys::Rect {
-			left,
-			top: base,
-			right,
-			bottom,
-		},
-		sys::DT_CENTER | sys::DT_VCENTER | sys::DT_SINGLELINE | sys::DT_END_ELLIPSIS,
-		colour(palette.neutral[0]),
-		// SAFETY: the dialog's own font.
-		unsafe { sys::SendMessageA(sys::GetParent(item.window), sys::WM_GETFONT, 0, 0) } as Handle,
+		text,
+		&label_rect,
+		sys::DT_CENTER | sys::DT_VCENTER | sys::DT_SINGLELINE | DT_NOCLIP,
+		ink,
+		font,
 	);
-	if chosen {
-		// The ring: the sun hue, with a hairline in the text colour outside it so it shows on any ground and any theme.
-		// SAFETY: a plain system colour query.
-		let ink = unsafe { sys::GetSysColor(sys::COLOR_BTNTEXT) };
-		let sun = colour(palette.sun);
-		fill(dc, rect.left, rect.top, rect.right, rect.top + 1, ink);
-		fill(dc, rect.left, rect.bottom - 1, rect.right, rect.bottom, ink);
-		fill(dc, rect.left, rect.top, rect.left + 1, rect.bottom, ink);
-		fill(dc, rect.right - 1, rect.top, rect.right, rect.bottom, ink);
-		for inset in 1..3 {
-			fill(
-				dc,
-				rect.left + inset,
-				rect.top + inset,
-				rect.right - inset,
-				rect.top + inset + 1,
-				sun,
-			);
-			fill(
-				dc,
-				rect.left + inset,
-				rect.bottom - inset - 1,
-				rect.right - inset,
-				rect.bottom - inset,
-				sun,
-			);
-			fill(
-				dc,
-				rect.left + inset,
-				rect.top + inset,
-				rect.left + inset + 1,
-				rect.bottom - inset,
-				sun,
-			);
-			fill(
-				dc,
-				rect.right - inset - 1,
-				rect.top + inset,
-				rect.right - inset,
-				rect.bottom - inset,
-				sun,
-			);
-		}
-	}
 	if item.item_state & sys::ODS_FOCUS != 0 {
+		// The name is in the system's text colour on the face, and the focus rectangle goes round it, as round a radio button's label.
+		let ansi = to_ansi(text);
+		let mut extent = sys::Rect {
+			left: 0,
+			top: 0,
+			right: 0,
+			bottom: 0,
+		};
+		// SAFETY: a live context, the dialog's font selected only for the measurement, and a text that ends in a NUL.
+		unsafe {
+			let old = if font.is_null() {
+				sys::NULL
+			} else {
+				sys::SelectObject(dc, font)
+			};
+			sys::DrawTextA(
+				dc,
+				ansi.as_ptr(),
+				-1,
+				&mut extent,
+				DT_CALCRECT | sys::DT_SINGLELINE | sys::DT_NOPREFIX,
+			);
+			if !old.is_null() {
+				sys::SelectObject(dc, old);
+			}
+		}
+		let half = ((extent.right - extent.left) / 2 + 2).min((label_rect.right - label_rect.left) / 2);
+		let middle = (label_rect.left + label_rect.right) / 2;
 		let focus = sys::Rect {
-			left: rect.left + 3,
-			top: rect.top + 3,
-			right: rect.right - 3,
-			bottom: rect.bottom - 3,
+			left: middle - half,
+			top: label_rect.top,
+			right: middle + half,
+			bottom: label_rect.bottom,
 		};
 		// SAFETY: a live context.
 		unsafe { sys::DrawFocusRect(dc, &focus) };
+	}
+}
+
+/// The palette the dialog shows now: the preview's, which follows the swatches and light mode.
+fn palette_now(state: &State) -> Palette {
+	match state.preview.borrow().as_ref() {
+		Some(preview) => palette_for(&preview.current),
+		None => palette_for(&state.settings.borrow()),
 	}
 }
 
@@ -374,10 +354,7 @@ fn draw_header(state: &State, item: &sys::DrawItemStruct, number: usize) {
 		state.bold.get(),
 	);
 	// The rule under it, in the palette's first glow hue (the deeper hue by day, where a light hue would vanish on the face).
-	let palette = match state.preview.borrow().as_ref() {
-		Some(preview) => palette_for(&preview.current),
-		None => Palette::new(PaletteId::Dusk, false),
-	};
+	let palette = palette_now(state);
 	let hue = if palette.light { palette.deep[0] } else { palette.glow[0] };
 	fill(dc, rect.left, rect.bottom - 2, rect.right, rect.bottom, colour(hue));
 }
@@ -386,9 +363,10 @@ fn draw_banner(state: &State, item: &sys::DrawItemStruct) {
 	let dc = item.dc;
 	let rect = &item.rect;
 	let (width, height) = (rect.right - rect.left, rect.bottom - rect.top);
+	let inks = banner::inks(&palette_now(state));
 	match state.banner.borrow().as_ref() {
 		Some(banner) => stretch(dc, width, height, banner.width, banner.height, &banner.pixels),
-		None => fill(dc, rect.left, rect.top, rect.right, rect.bottom, 0),
+		None => fill(dc, rect.left, rect.top, rect.right, rect.bottom, colour(inks.band)),
 	}
 	let text_left = rect.left + 12 + 32 + 10;
 	// SAFETY: a live context and the saver's own icon (or null, which draws nothing).
@@ -410,7 +388,7 @@ fn draw_banner(state: &State, item: &sys::DrawItemStruct) {
 		title,
 		&shadow(1),
 		sys::DT_LEFT | sys::DT_BOTTOM | sys::DT_SINGLELINE,
-		0,
+		colour(inks.shadow),
 		state.title.get(),
 	);
 	draw_text(
@@ -418,7 +396,7 @@ fn draw_banner(state: &State, item: &sys::DrawItemStruct) {
 		title,
 		&shadow(0),
 		sys::DT_LEFT | sys::DT_BOTTOM | sys::DT_SINGLELINE,
-		0xFF_FFFF,
+		colour(inks.title),
 		state.title.get(),
 	);
 	draw_text(
@@ -431,7 +409,7 @@ fn draw_banner(state: &State, item: &sys::DrawItemStruct) {
 			bottom: rect.bottom,
 		},
 		sys::DT_LEFT | sys::DT_TOP | sys::DT_SINGLELINE,
-		colour(0xE0E0E0),
+		colour(inks.subtitle),
 		// SAFETY: the dialog's own font.
 		unsafe { sys::SendMessageA(sys::GetParent(item.window), sys::WM_GETFONT, 0, 0) } as Handle,
 	);
@@ -483,31 +461,18 @@ fn make_saver(state: &State, settings: &Settings, width: usize, height: usize) -
 	Saver::new(settings.clone(), scene, width, height, true)
 }
 
-/// Renders the banner once: the scene at its moment, darker towards the left under the title.
-fn render_banner(state: &State, width: usize, height: usize) -> Banner {
-	let mut settings = state.settings.borrow().clone();
-	settings.set(Key::Letterbox, 0);
-	settings.set(Key::Fades, 0);
-	settings.set(Key::Speed, 100);
-	let mut saver = make_saver(state, &settings, width, height);
-	let moment = banner_moment(state.kind);
-	saver.at(moment - 0.1);
-	let frame = saver.at(moment);
-	let mut pixels = frame.px.clone();
-	let (frame_width, frame_height) = (frame.w, frame.h);
-	for row in pixels.chunks_mut(frame_width) {
-		for (x, pixel) in row.iter_mut().enumerate() {
-			// 30% at the left edge, rising to full strength by two thirds of the way across.
-			let keep = (77 + (x * 3 * 178 / (frame_width * 2)).min(178)) as u32;
-			let (r, g, b) = ((*pixel >> 16) & 0xFF, (*pixel >> 8) & 0xFF, *pixel & 0xFF);
-			*pixel = ((r * keep / 255) << 16) | ((g * keep / 255) << 8) | (b * keep / 255);
-		}
-	}
-	Banner {
-		width: frame_width,
-		height: frame_height,
-		pixels,
-	}
+/// Renders the banner for the settings the preview has now, and repaints it.
+fn render_banner(dialog: Handle, state: &State) {
+	let window = item(dialog, BANNER_ID);
+	let (width, height) = client_size(window);
+	let settings = match state.preview.borrow().as_ref() {
+		Some(preview) => preview.current.clone(),
+		None => state.settings.borrow().clone(),
+	};
+	let make = |s: &Settings, seed: u32, w: usize, h: usize| (state.make)(s, seed, w, h);
+	*state.banner.borrow_mut() = Some(banner::render(&settings, width, height, &make));
+	// SAFETY: a plain repaint request for a control of the dialog.
+	unsafe { sys::InvalidateRect(window, core::ptr::null(), 0) };
 }
 
 /// Applies what the controls say now: a palette, light, seed or scene setting rebuilds the scene; the rest reaches the running one.
@@ -518,19 +483,20 @@ fn apply_changes(dialog: Handle, state: &State) {
 	};
 	let mut next = preview.current.clone();
 	collect(dialog, &mut next);
-	let rebuild = next.text != preview.current.text
-		|| fields(state.kind).any(|field| {
-			let scene_level = matches!(field.key, Key::Palette | Key::Light | Key::Seed) || section(field.key) == 3;
-			scene_level && next.get(field.key) != preview.current.get(field.key)
-		});
-	let look_changed =
-		next.get(Key::Palette) != preview.current.get(Key::Palette) || next.get(Key::Light) != preview.current.get(Key::Light);
+	let changed = |key: Key| next.get(key) != preview.current.get(key);
+	let scene_changed = fields(state.kind).any(|field| section(field.key) == 3 && changed(field.key));
+	let look_changed = changed(Key::Palette) || changed(Key::Light);
+	let rebuild = next.text != preview.current.text || scene_changed || look_changed || changed(Key::Seed);
 	if rebuild {
 		preview.saver = make_saver(state, &next, preview.width, preview.height);
 	} else {
 		preview.saver.settings = next.clone();
 	}
 	preview.current = next;
+	// The banner has its own seed, so only the look and the scene's own settings change it.
+	if look_changed || scene_changed {
+		state.banner_stale.set(true);
+	}
 	if look_changed {
 		state.light.set(palette_for(&preview.current).light);
 		for n in 0..state.palette_options.len() {
@@ -548,6 +514,12 @@ fn apply_changes(dialog: Handle, state: &State) {
 fn tick(dialog: Handle, state: &State) {
 	if state.dirty.replace(false) {
 		apply_changes(dialog, state);
+	}
+	if state.banner_stale.replace(false) {
+		render_banner(dialog, state);
+		// The banner took this tick; the clock restarts so the preview does not jump.
+		state.last.set(state.clock.seconds());
+		return;
 	}
 	let now = state.clock.seconds();
 	let elapsed = now - state.last.replace(now);
@@ -588,7 +560,7 @@ fn set_up(dialog: Handle, state: &State) -> bool {
 	let base = unsafe { sys::SendMessageA(dialog, sys::WM_GETFONT, 0, 0) } as Handle;
 	state.bold.set(derived_font(base, sys::FW_BOLD, 100));
 	state.title.set(derived_font(base, sys::FW_BOLD, 170));
-	*state.banner.borrow_mut() = Some(render_banner(state, banner_width, banner_height));
+	state.banner_stale.set(true);
 	let settings = state.settings.borrow().clone();
 	state.light.set(palette_for(&settings).light);
 	*state.preview.borrow_mut() = Some(Preview {
@@ -783,6 +755,7 @@ pub fn show_afterglow(kind: SaverKind, owner: Handle, make: MakeScene) -> bool {
 		settings: RefCell::new(settings),
 		preview: RefCell::new(None),
 		banner: RefCell::new(None),
+		banner_stale: Cell::new(false),
 		clock: Clock::new(),
 		last: Cell::new(0.0),
 		dirty: Cell::new(false),

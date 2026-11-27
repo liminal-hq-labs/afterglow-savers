@@ -27,6 +27,9 @@ cargo run -p savers-preview --release -- frames --scene ink --size 640x360 --sca
 cargo run -p savers-preview --release -- sheet --scene twilight --size 640x360 --times 0,10,20,30,40,50 --out sheet.png
 cargo run -p savers-preview --release -- bench --scene maze --size 800x600     # every rung of the ladder
 bash scripts/preview-video.sh ink                                              # frames to GIF and MP4 with ffmpeg
+cargo run -p savers-preview --release -- banner --scene maze --out banner.png  # the settings dialog's banner, as the dialog draws it
+cargo run -p savers-preview --release -- swatches --scene ink --out swatches     # every palette swatch, night and day, plain and chosen
+bash art/dialog-sheet.sh                                                       # a contact sheet of the six banners and the swatches
 ```
 
 ## Frame times and the Pentium III estimate

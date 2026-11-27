@@ -10,10 +10,13 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use savers_core::bands::Bands;
+use savers_core::banner::{self, Shot};
 use savers_core::bench::{P3_REFERENCE_MS, reference};
+use savers_core::palette::{Palette, PaletteId};
 use savers_core::saver::{Saver, render_size};
 use savers_core::scenes::build;
-use savers_core::settings::{Key, SaverKind, Settings, SettingsStore, fields};
+use savers_core::settings::{Control, Key, SaverKind, Settings, SettingsStore, fields};
+use savers_core::swatch;
 
 mod png;
 mod pool;
@@ -26,6 +29,9 @@ commands:
   bench    time every render scale and detail level, with a Pentium III estimate
   threads  time 100% Ultra at --size with each count of --counts threads (default 1,2,4,8), for the scene or --scene all
   audio    render the scene's score alone to a WAV file (--out FILE.wav), from --from for --seconds
+  banner   render the settings dialog's banner as the dialog does (--out FILE.png, --size default 564x65); prints the title's colours
+  swatches render the dialog's palette swatches, by night and by day, plain and chosen, into --out DIR (--size default 50x49);
+           prints each file with the box its name goes in
 
 options:
   --scene NAME        maze, cracktro, twilight, ink, collection, ghostwriter (default ink)
@@ -45,6 +51,9 @@ options:
   --threads N         share the heavy passes between N threads (default 1); the frames are the same byte for byte
   --counts LIST      threads: the thread counts to time, comma separated (default 1,2,4,8)
   --pipe              frames: write raw RGB24 frames to standard output instead of PNG files (for ffmpeg -f rawvideo)
+  --shot T,A,C,L[,W,X] banner: try a moment T, render aspect A, crop centre C, lead L, render width W times the banner's and
+                      crop centre across X (with --seed) instead of the scene's own
+  --face RRGGBB       swatches: the dialog face behind them (default c0c0c0, Windows 95's)
 ";
 
 #[derive(Default)]
@@ -88,6 +97,9 @@ struct Opts {
 	threads: usize,
 	counts: Vec<usize>,
 	all: bool,
+	shot: Option<Shot>,
+	face: u32,
+	size_given: bool,
 }
 
 fn parse() -> Result<Opts, String> {
@@ -116,6 +128,9 @@ fn parse() -> Result<Opts, String> {
 		threads: 1,
 		counts: vec![1, 2, 4, 8],
 		all: false,
+		shot: None,
+		face: 0xC0C0C0,
+		size_given: false,
 	};
 	while let Some(a) = args.next() {
 		let mut val = || args.next().ok_or(format!("{a} needs a value"));
@@ -132,6 +147,7 @@ fn parse() -> Result<Opts, String> {
 				let v = val()?;
 				let (w, h) = v.split_once('x').ok_or("size is WxH")?;
 				o.size = (w.parse().map_err(|_| "bad width")?, h.parse().map_err(|_| "bad height")?);
+				o.size_given = true;
 			}
 			"--seed" => o.seed = val()?.parse().map_err(|_| "bad seed")?,
 			"--set" => {
@@ -163,6 +179,25 @@ fn parse() -> Result<Opts, String> {
 					.map(|n| n.trim().parse().map_err(|_| "bad --counts".to_string()))
 					.collect::<Result<_, _>>()?;
 			}
+			"--shot" => {
+				let v = val()?;
+				let parts: Vec<f32> = v.split(',').filter_map(|p| p.parse().ok()).collect();
+				let (t, aspect, centre, lead, wide, across) = match parts[..] {
+					[t, aspect, centre, lead] => (t, aspect, centre, lead, 1.0, 0.5),
+					[t, aspect, centre, lead, wide, across] => (t, aspect, centre, lead, wide, across),
+					_ => return Err("--shot T,ASPECT,CENTRE,LEAD[,WIDE,ACROSS]".into()),
+				};
+				o.shot = Some(Shot {
+					t,
+					wide,
+					aspect,
+					centre,
+					across,
+					lead: lead as u16,
+					seed: 0,
+				});
+			}
+			"--face" => o.face = u32::from_str_radix(&val()?, 16).map_err(|_| "--face RRGGBB")?,
 			"--help" | "-h" => return Err(String::new()),
 			_ => return Err(format!("unknown option {a}")),
 		}
@@ -423,6 +458,71 @@ fn audio(o: &Opts) -> Result<(), String> {
 	Ok(())
 }
 
+/// The settings dialog's banner, as `dialog_v2` renders it before drawing the icon and the title over it.
+fn banner_png(o: &Opts) -> Result<(), String> {
+	let settings = Settings::load(o.kind, &o.store);
+	let size = if o.size_given { o.size } else { (564, 65) };
+	let kind = o.kind;
+	let make = |s: &Settings, seed: u32, w: usize, h: usize| build(kind, s, seed, w, h);
+	let started = Instant::now();
+	let trial = o.shot.map(|shot| Shot { seed: o.seed, ..shot });
+	let made = banner::render_shot(&settings, size.0, size.1, &make, trial);
+	let ms = started.elapsed().as_secs_f64() * 1000.0;
+	let out = o
+		.out
+		.clone()
+		.unwrap_or_else(|| PathBuf::from(format!("banner-{}.png", kind.registry_name().to_lowercase())));
+	png::write(&out, made.width, made.height, &made.pixels).map_err(|e| format!("{}: {e}", out.display()))?;
+	println!(
+		"{} title={:06x} subtitle={:06x} shadow={:06x} ms={ms:.0}",
+		out.display(),
+		made.inks.title,
+		made.inks.subtitle,
+		made.inks.shadow
+	);
+	Ok(())
+}
+
+/// Every palette swatch of the scene's palette field, by night and by day, plain and chosen, one PNG each.
+fn swatches(o: &Opts) -> Result<(), String> {
+	let size = if o.size_given { o.size } else { (50, 49) };
+	let out = o.out.clone().unwrap_or_else(|| PathBuf::from("swatches"));
+	std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+	let options = fields(o.kind)
+		.find(|f| f.key == Key::Palette)
+		.and_then(|f| match f.control {
+			Control::Choice(options) => Some(options),
+			_ => None,
+		})
+		.ok_or("this saver has no palette field")?;
+	for &(name, value) in options {
+		for light in [false, true] {
+			for chosen in [false, true] {
+				let palette = Palette::new(PaletteId::from_u32(value), light);
+				let mut pixels = vec![0u32; size.0 * size.1];
+				let label = swatch::draw(&mut pixels, size.0, size.1, &palette, o.face, 0, chosen);
+				let file = out.join(format!(
+					"swatch-{}-{}{}.png",
+					swatch::short_name(name).to_lowercase(),
+					if light { "day" } else { "night" },
+					if chosen { "-chosen" } else { "" }
+				));
+				png::write(&file, size.0, size.1, &pixels).map_err(|e| format!("{}: {e}", file.display()))?;
+				println!(
+					"{} {} {} {} {} {}",
+					file.display(),
+					label.label_left,
+					label.label_top,
+					label.label_right,
+					label.label_bottom,
+					swatch::short_name(name)
+				);
+			}
+		}
+	}
+	Ok(())
+}
+
 /// A 16-bit stereo PCM WAV file.
 fn write_wav(path: &Path, rate: u32, samples: &[i16]) -> std::io::Result<()> {
 	let mut f = std::io::BufWriter::new(std::fs::File::create(path)?);
@@ -461,6 +561,8 @@ fn main() -> ExitCode {
 		"bench" => bench(&o),
 		"threads" => thread_bench(&o),
 		"audio" => audio(&o),
+		"banner" => banner_png(&o),
+		"swatches" => swatches(&o),
 		other => Err(format!("unknown command {other}")),
 	};
 	match r {

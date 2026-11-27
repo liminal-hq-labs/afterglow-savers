@@ -35,3 +35,9 @@ Each saver's icon is an SVG master in `art/masters/`, drawn in Afterglow's icon 
 | Ink | Two marbled swirls folding into each other |
 | Collection | The four motifs as four quarter tiles |
 | Quill Ghostwriter | A gold nib on a navy page (a placeholder until Quill's own art is used) |
+
+`QUILLGW.SCR`, the Windows 3.x edition, has its own icon in the sixteen standard Windows colours (SAV-D50): a gold nib writing the last line on a navy page with a folded corner, 32 and 16 pixels, drawn as pixels in the style of Quill's `QUILL31.ICO`. `art/gen-quillgw-icon.py` writes its masters (`art/masters/quillgw.svg`, `quillgw-16.svg`) and `platforms/win16/res/quillgw.ico`; `--check` compares them with the committed files.
+
+## The settings dialog
+
+The Afterglow settings dialog's banners and palette swatches are drawn from the palettes by `savers-core` rather than kept as pictures (SAV-D49): each banner is the saver's own scene at a chosen moment, and each swatch a small dusk chip, a stepped sky over a slatted sun. The rules, moments and framings are in [settings-dialog.md](settings-dialog.md#the-art); `art/dialog-sheet.sh` writes a contact sheet of them.
