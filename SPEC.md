@@ -37,7 +37,7 @@ The first letter after a `/` or `-`, in either case, picks the mode, as `scrnsav
 ## 4. Full screen (`/s`)
 
 - One borderless topmost window (`WS_POPUP`, `WS_EX_TOPMOST | WS_EX_TOOLWINDOW`) over the whole virtual screen (`SM_XVIRTUALSCREEN` and the rest; the primary screen where those metrics are zero), with no cursor. On several monitors the one picture spans them all.
-- **It ends** on any key or mouse button, on losing activation, and on a mouse move once the cursor is more than 10 pixels in x or y from where the first move found it. It also ends when the system sends `WM_CLOSE` or the process is terminated, which Winlogon does on activity.
+- **It ends** on any key or mouse button, on losing activation (once it has been active), and on a mouse move once the cursor is more than 10 pixels in x or y from where the first move found it. It also ends when the system sends `WM_CLOSE` or the process is terminated, which Winlogon does on activity.
 - `SC_SCREENSAVE`, `SC_CLOSE`, `SC_NEXTWINDOW` and `SC_PREVWINDOW` system commands are refused while it runs.
 - It fades up from black over one second and ends at once when told to (no fade out: the user wants their desktop).
 - No password code: NT and ReactOS lock the workstation through Winlogon's `ScreenSaverIsSecure`; Windows 9x passwords are not supported (SAV-D17).
@@ -105,12 +105,12 @@ The Collection uses its own common settings for all four scenes, and each scene'
 
 ## 9. The settings dialog
 
-A modal dialog, "Afterglow Maze Settings" (the saver's name), built at run time from common controls ReactOS and Windows 95 both have (SAV-D9):
+A modal dialog, "Afterglow Maze Settings" (the saver's name, then "Settings", with the saver's icon), built at run time from common controls ReactOS and Windows 95 both have (SAV-D9). Group boxes hold the controls, in this tab order, and every label has a mnemonic:
 
-- **Look:** palette (combo box), light mode (check box), speed (trackbar).
-- **Quality:** render scale (combo box), detail (combo box), frame cap (combo box).
-- **Finish:** bloom, streaks, vignette and grain (trackbars), letterbox and fades (check boxes).
-- **Scene:** the scene's own settings: trackbars, combo boxes, a seed edit box, the cracktro's multi-line message editor and part check boxes, the collection's duration and saver check boxes.
+- **Look** (top left): palette (combo box), light mode (check box), speed (trackbar).
+- **Quality** (left, under Look): render scale, detail and frame cap (combo boxes).
+- **Finish** (right): bloom, streaks, vignette and grain (trackbars), letterbox and fades (check boxes).
+- **Scene** (full width, below): the scene's own settings in two runs: trackbars, combo boxes, a seed edit box, the cracktro's part check boxes, the collection's duration and saver check boxes, and for the cracktro (and Ghostwriter) the multi-line text editor. A label too long for its column wraps onto a second line rather than clipping.
 - **OK** writes every value and ends; **Cancel** writes nothing; **Defaults** puts the defaults in the controls.
 
 ## 10. Quill Ghostwriter

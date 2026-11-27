@@ -7,13 +7,15 @@ The resumable log of where the work stands. Newest state first; each phase lists
 - **P0** repository, research notes (`docs/reactos-scr.md`), storyboard (`docs/scenes.md`). Done.
 - **P1** the engine core and the host preview tool. Done.
 - **P2** the scenes: Ink, Twilight (with its sun, SAV-D27), Cracktro, Maze, the Collection, and Quill Ghostwriter's scene. Done; previews in `~/Documents/Liminal HQ/Afterglow Savers/previews`, a 4K Twilight video too.
-- **P3** the Win32 `.scr` shells: a Sonnet builder has WP-win32 in `~/source/worktrees/afterglow-savers/win32` (branch `wp/win32`). When it lands: `scripts/guest/guest.py --scr <dist>` runs every saver in a copy of the Afterglow ReactOS image and takes screendumps.
+- **P3** the Win32 `.scr` shells (`platforms/win32`): `/s`, `/p`, `/c`, registry, dialog, resources, six programs for i586 (x87, no MMX or SSE) and x86-64, checks, byte-identical builds and the Wine run. Done. Sizes (`-Os`, i586): AGMAZE 79 KiB, AGCRACK 79 KiB, AGTWILIT 81 KiB, AGINK 67 KiB, AGCOLLCT 167 KiB (without Ghostwriter), together 473 KiB of 640; AGQUILL 86 KiB. Next: `scripts/guest/guest.py --scr platforms/win32/dist/<arch>` in the ReactOS image.
 - **P4** the ReactOS integration plan: done (`docs/reactos-integration.md`); the Quill installer plan too (`docs/quill-installer-integration.md`).
-- **P5** Quill Ghostwriter: the scene is done; its `.scr` comes with WP-win32; the Windows 3.x edition `QUILLGW.SCR` (SAV-D23) is WP-win16, queued for a builder.
+- **P5** Quill Ghostwriter: the scene and `AGQUILL.SCR` are done; the Windows 3.x edition `QUILLGW.SCR` (SAV-D23) is WP-win16, queued for a builder.
 - **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): three work packages, queued for builders.
 - **P7** the Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after WP-win32: three work packages.
 
 Builder queue (the orchestrator's order): WP-art, WP-gpu-share, WP-win16, then the dialog v2 packages.
+
+The Win32 shell is built with `opt-level = "s"`: at `2` the Collection is 204 KiB and over its budget. The Collection's own maker leaves Ghostwriter out (a Collection asked for it plays Ink), which `AGQUILL.SCR` carries instead.
 
 ## Measurements
 
