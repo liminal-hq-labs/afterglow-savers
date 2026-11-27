@@ -8,370 +8,60 @@
 //! pixel of the disc finds its normal, turns it into the planet's frame (the camera's view of the axis), and reads latitude and
 //! longitude; the spin is an offset in longitude. Light wraps softly round the terminator, which is tinted through the glow hues, and
 //! the atmosphere glows inside the limb (a fresnel term) and outside it (a falloff), brightest on the day side.
+//!
+//! The camera, the parameters, the maps and the ramps live in [`crate::twilight_shared`], which the graphics-card edition shares.
 
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::colour::{self, Ramp, mix, mixf, scale, screen};
+use crate::colour::{self, mix, mixf, scale, screen};
 use crate::frame::Frame;
-use crate::math::{PI, TAU, V3, atan2, clamp, cos, ease, floor_i, fract, lerp, powf, round_i, saturate, sin, smoothstep, sqrt};
-use crate::noise::{fbm2, fbm3, noise3};
-use crate::palette::Palette;
-use crate::rng::{Rng, hash2};
-use crate::saver::palette_for;
+use crate::math::{PI, TAU, V3, atan2, clamp, cos, fract, powf, round_i, saturate, sin, sqrt};
+use crate::noise::noise3;
 use crate::scene::{Ctx, Hints, Scene};
-use crate::settings::{Detail, Key, Settings};
-
-/// One camera shot: where the planet sits, how big, and how the axis and light are turned, at the start and end of the shot.
-#[derive(Clone, Copy)]
-struct Shot {
-	len: f32,
-	/// Planet centre in screen fractions (x of the width, y of the height), and radius in heights.
-	from: [f32; 7],
-	to: [f32; 7],
-}
-
-// [cx, cy, radius, axis tilt towards the viewer (radians), roll (radians), light angle (radians about the vertical: 0 lights the
-// right half, π/2 lights the face, π the left half, more than π the back, for a crescent), the sun's distance from the planet's
-// centre on screen in planet radii (0 for no sun in the shot)]
-const SHOTS: [Shot; 4] = [
-	// The establishing shot: small, left third, turning.
-	Shot {
-		len: 25.0,
-		from: [0.36, 0.52, 0.22, 0.35, -0.12, 0.35, 3.0],
-		to: [0.40, 0.50, 0.25, 0.30, -0.08, 0.15, 3.3],
-	},
-	// The push-in towards the terminator.
-	Shot {
-		len: 25.0,
-		from: [0.55, 0.55, 0.30, 0.25, 0.10, 0.1, 0.0],
-		to: [0.62, 0.78, 0.75, 0.15, 0.18, -0.15, 0.0],
-	},
-	// From slightly above, a satellite passes close.
-	Shot {
-		len: 20.0,
-		from: [0.50, 0.58, 0.34, 0.75, 0.0, 0.45, 0.0],
-		to: [0.47, 0.56, 0.37, 0.70, -0.05, 0.3, 0.0],
-	},
-	// The drift along the night side, lit from behind: the sun slides out from behind the limb.
-	Shot {
-		len: 20.0,
-		from: [0.70, 0.42, 0.45, 0.2, -0.25, 3.3, 0.78],
-		to: [0.30, 0.47, 0.48, 0.25, -0.15, 3.55, 1.12],
-	},
-];
-
-const FADE: f32 = 1.5;
-
-struct Moon {
-	orbit: f32,
-	incline: f32,
-	speed: f32,
-	phase: f32,
-	radius: f32,
-	tint: u32,
-}
-
-struct Satellite {
-	orbit: f32,
-	incline: f32,
-	node: f32,
-	speed: f32,
-	phase: f32,
-}
-
-struct Star {
-	x: f32,
-	y: f32,
-	bright: f32,
-	twinkle: f32,
-	tint: u32,
-}
+use crate::settings::{Detail, Settings};
+use crate::twilight_shared::{Shared, camera};
 
 pub struct Twilight {
 	w: usize,
 	h: usize,
-	pal: Palette,
-	/// Ground map, `mw` × `mh`, and its night lights (0 to 255).
-	ground: Vec<u32>,
-	lights: Vec<u8>,
-	clouds: Vec<u8>,
-	mw: usize,
-	mh: usize,
+	shared: Shared,
 	/// Arcsine table: index by y in [-1, 1] over 1024 steps, value is latitude as a map row in 16.16.
 	asin_v: Vec<i32>,
-	nebula: Frame,
-	stars: Vec<Star>,
-	moons: Vec<Moon>,
-	sats: Vec<Satellite>,
-	atmos: f32,
-	sun: bool,
-	atmos_ramp: Ramp,
-	/// The light's colour by how directly it falls (index: n·l from -0.3 to 1).
-	light_ramp: Ramp,
-	total: f32,
-	spin_rate: f32,
 	seed: u32,
 }
 
 impl Twilight {
 	pub fn new(settings: &Settings, seed: u32, w: usize, h: usize) -> Twilight {
-		let detail = settings.detail();
-		let pal = palette_for(settings);
-		let mut rng = Rng::new(seed as u64 ^ 0x7E11_6A00_0000);
-		// The maps grow with the render width at High and Ultra, so a planet filling a large screen keeps its brush strokes.
-		let mw = match detail {
-			Detail::Low => 256,
-			Detail::Medium => 512,
-			Detail::High => (w / 2).next_power_of_two().clamp(512, 1024),
-			Detail::Ultra => (w * 3 / 4).next_power_of_two().clamp(512, 2048),
-		};
-		let mh = mw / 2;
-		let (ground, lights) = paint_ground(&pal, mw, mh, &mut rng.fork(1));
-		let clouds = paint_clouds(mw, mh, &mut rng.fork(2));
+		let shared = Shared::new(settings, seed, w, h);
+		let mh = shared.map_height;
 		let mut asin_v = vec![0i32; 1025];
 		for (i, slot) in asin_v.iter_mut().enumerate() {
 			let y = i as f32 / 512.0 - 1.0;
 			let lat = crate::math::asin(y);
 			*slot = ((lat / PI + 0.5) * (mh as f32 - 1.0) * 65_536.0) as i32;
 		}
-		let nebula = paint_nebula(&pal, w, h, &mut rng.fork(3));
-		let mut stars = Vec::new();
-		let mut srng = rng.fork(4);
-		let count = (w * h / 900).clamp(60, 700);
-		for _ in 0..count {
-			let b = srng.f();
-			stars.push(Star {
-				x: srng.f(),
-				y: srng.f(),
-				bright: b * b * b,
-				twinkle: srng.range(0.5, 3.0),
-				tint: if srng.f() < 0.3 {
-					pal.hue(srng.below(4) as usize)
-				} else {
-					pal.n(100)
-				},
-			});
-		}
-		let moon_count = settings.get(Key::Moons);
-		let mut moons = Vec::new();
-		for i in 0..moon_count {
-			moons.push(Moon {
-				orbit: rng.range(1.7, 2.6) + i as f32 * 0.7,
-				incline: rng.range(-0.35, 0.35),
-				speed: rng.range(0.025, 0.05) * if i == 1 { -1.0 } else { 1.0 },
-				phase: rng.f() * TAU,
-				radius: rng.range(0.11, 0.2) - i as f32 * 0.03,
-				tint: mixf(pal.n(300), pal.hue(i as usize + 1), 0.25),
-			});
-		}
-		let sats = (0..3)
-			.map(|i| Satellite {
-				orbit: rng.range(1.15, 1.5),
-				incline: rng.range(-0.9, 0.9),
-				node: rng.f() * TAU,
-				speed: rng.range(0.12, 0.2) * if i % 2 == 0 { 1.0 } else { -1.0 },
-				phase: rng.f() * TAU,
-			})
-			.collect();
-		let atmos_hue = pal.hue(pal.glow_n - 1);
-		let atmos_ramp = Ramp::new(&[
-			(0.0, 0x000000),
-			(0.25, mixf(0, atmos_hue, 0.6)),
-			(0.55, mixf(atmos_hue, pal.hue(1), 0.5)),
-			(0.8, pal.hue(0)),
-			(1.0, mixf(pal.sun, 0xFFFFFF, 0.5)),
-		]);
-		let cool = pal.hue(pal.glow_n - 1);
-		let at = |ndl: f32| (ndl + 0.3) / 1.3;
-		let light_ramp = Ramp::new(&[
-			(at(-0.3), mixf(0x000000, cool, 0.14)),
-			(at(-0.14), mixf(0x000000, cool, 0.32)),
-			(at(-0.04), mixf(cool, pal.hue(1), 0.45)),
-			(at(0.04), pal.hue(1)),
-			(at(0.13), mixf(pal.hue(0), pal.hue(1), 0.3)),
-			(at(0.24), mixf(pal.hue(0), pal.sun, 0.5)),
-			(at(0.42), mixf(pal.sun, 0xFFFFFF, 0.6)),
-			(1.0, 0xFFF6EE),
-		]);
 		Twilight {
 			w,
 			h,
-			light_ramp,
-			pal,
-			ground,
-			lights,
-			clouds,
-			mw,
-			mh,
+			shared,
 			asin_v,
-			nebula,
-			stars,
-			moons,
-			sats,
-			atmos: settings.get(Key::Atmosphere) as f32 / 100.0,
-			sun: settings.get(Key::Sun) == 1,
-			atmos_ramp,
-			total: SHOTS.iter().map(|s| s.len).sum(),
-			spin_rate: rng.range(0.012, 0.02),
 			seed,
 		}
 	}
-
-	/// The camera at time t: the shot's values eased between its ends, and the fade at the cuts.
-	fn camera(&self, t: f32) -> ([f32; 7], f32, usize) {
-		let loop_t = fract(t / self.total) * self.total;
-		let mut start = 0.0;
-		for (i, shot) in SHOTS.iter().enumerate() {
-			if loop_t < start + shot.len || i == SHOTS.len() - 1 {
-				let k = saturate((loop_t - start) / shot.len);
-				let e = ease(k) * 0.7 + k * 0.3;
-				let mut v = [0.0; 7];
-				for (j, slot) in v.iter_mut().enumerate() {
-					*slot = lerp(shot.from[j], shot.to[j], e);
-				}
-				let into = loop_t - start;
-				let left = shot.len - into;
-				let fade = saturate(into / FADE).min(saturate(left / FADE));
-				return (v, fade, i);
-			}
-			start += shot.len;
-		}
-		(SHOTS[0].from, 1.0, 0)
-	}
-}
-
-/// The planet's ground: elevation from domain-warped 3D noise on the sphere, cut into stepped terraces with a lit rim and a dark
-/// foot on every step, like contour lines in a painting; dry and wet land from a second field; coastal shelves; brush strokes
-/// along the latitude lines; ice at the poles; and lights near the coasts.
-fn paint_ground(pal: &Palette, mw: usize, mh: usize, rng: &mut Rng) -> (Vec<u32>, Vec<u8>) {
-	let seed = rng.next_u32();
-	let sea_level = rng.range(-0.02, 0.1);
-	let cool = pal.hue(pal.glow_n - 1);
-	let deep = mixf(pal.n(700), cool, 0.32);
-	let shelf = mixf(pal.n(500), cool, 0.5);
-	let beach = mixf(pal.n(300), pal.sun, 0.25);
-	let dry = Ramp::new(&[
-		(0.0, mixf(pal.n(500), pal.hue(0), 0.5)),
-		(0.5, mixf(pal.n(400), pal.hue(1), 0.4)),
-		(1.0, mixf(pal.n(200), pal.hue(0), 0.2)),
-	]);
-	let wet = Ramp::new(&[
-		(0.0, mixf(pal.n(600), cool, 0.35)),
-		(0.5, mixf(pal.n(500), pal.hue(1), 0.3)),
-		(1.0, mixf(pal.n(300), cool, 0.2)),
-	]);
-	let ice = mixf(pal.n(300), cool, 0.12);
-	let mut ground = vec![0u32; mw * mh];
-	let mut lights = vec![0u8; mw * mh];
-	for v in 0..mh {
-		let lat = (v as f32 + 0.5) / mh as f32 * PI - PI * 0.5;
-		let (cl, sl) = (cos(lat), sin(lat));
-		for u in 0..mw {
-			let lon = (u as f32 + 0.5) / mw as f32 * TAU;
-			let p = V3::new(cl * sin(lon), sl, cl * cos(lon));
-			let warp = fbm3(p.x * 1.5, p.y * 1.5, p.z * 1.5, 3, 0.5, seed ^ 0x55);
-			let q = p * 2.0 + V3::new(warp, -warp, warp * 0.6) * 0.9;
-			let e = fbm3(q.x, q.y, q.z, 6, 0.5, seed);
-			let moist = fbm3(p.x * 2.5 + 3.0, p.y * 2.5, p.z * 2.5, 3, 0.5, seed ^ 0x99);
-			let i = v * mw + u;
-			// Brush strokes: noise stretched along the latitude lines.
-			let stroke = fbm2(lon * 24.0, lat * 120.0, 2, 0.5, seed ^ 0x77) * 0.13;
-			let polar = smoothstep(0.84, 0.93, sl.abs() + e * 0.12);
-			let c = if e < sea_level {
-				let d = saturate((sea_level - e) * 6.0);
-				mixf(shelf, deep, smoothstep(0.0, 0.5, d))
-			} else {
-				let h = saturate((e - sea_level) * 2.4);
-				let steps = h * 6.0;
-				let base = floor_i(steps) as f32;
-				let within = steps - base;
-				let terrace = base / 6.0;
-				let land = mixf(dry.at(terrace), wet.at(terrace), smoothstep(-0.15, 0.25, moist));
-				// The rim of each step catches light; its foot is in shadow.
-				let lit_rim = smoothstep(0.8, 0.97, within) * 0.18;
-				let foot = (1.0 - smoothstep(0.0, 0.12, within)) * 0.16 * if base > 0.0 { 1.0 } else { 0.0 };
-				let mut c = colour::shade(land, lit_rim - foot);
-				let coast = 1.0 - smoothstep(0.0, 0.025, e - sea_level);
-				c = mixf(c, beach, coast * 0.5);
-				if coast > 0.0 && rng_hash(u, v, seed) < (coast * 90.0) as u32 {
-					lights[i] = 120 + (rng_hash(u + 7, v, seed) & 127) as u8;
-				}
-				if h < 0.3 && rng_hash(u, v + 3, seed) < 3 {
-					lights[i] = 200;
-				}
-				c
-			};
-			ground[i] = mixf(colour::shade(c, stroke), ice, polar);
-		}
-	}
-	(ground, lights)
-}
-
-#[inline]
-fn rng_hash(u: usize, v: usize, seed: u32) -> u32 {
-	hash2(u as i32, v as i32, seed) & 0xFFFF
-}
-
-/// Cloud cover, 0 to 255: bands along the latitude lines, broken by noise and swirled.
-fn paint_clouds(mw: usize, mh: usize, rng: &mut Rng) -> Vec<u8> {
-	let seed = rng.next_u32();
-	let mut out = vec![0u8; mw * mh];
-	for v in 0..mh {
-		let lat = (v as f32 + 0.5) / mh as f32 * PI - PI * 0.5;
-		let (cl, sl) = (cos(lat), sin(lat));
-		for u in 0..mw {
-			let lon = (u as f32 + 0.5) / mw as f32 * TAU;
-			let p = V3::new(cl * sin(lon), sl, cl * cos(lon));
-			let swirl = noise3(p.x * 2.0, p.y * 2.0, p.z * 2.0, seed ^ 0x11) * 0.8;
-			let band = sin(lat * 7.0 + swirl * 2.0) * 0.35;
-			let n = fbm3(p.x * 3.0 + swirl, p.y * 9.0, p.z * 3.0 - swirl, 4, 0.55, seed) + band;
-			out[v * mw + u] = (smoothstep(0.12, 0.5, n) * 215.0) as u8;
-		}
-	}
-	out
-}
-
-/// A painterly nebula behind the planet: domain-warped noise in the palette's glow hues, dim, at the render size plus a margin for
-/// the camera's drift.
-fn paint_nebula(pal: &Palette, w: usize, h: usize, rng: &mut Rng) -> Frame {
-	let seed = rng.next_u32();
-	let nw = (w * 3 / 4).max(8);
-	let nh = (h * 3 / 4).max(8);
-	let mut f = Frame::new(nw, nh);
-	let a = mixf(pal.ground(), pal.hue(pal.glow_n - 1), 0.42);
-	let b = mixf(pal.ground(), pal.hue(1), 0.32);
-	let c = mixf(pal.ground(), pal.hue(0), 0.24);
-	for y in 0..nh {
-		for x in 0..nw {
-			let fx = x as f32 / nh as f32 * 2.2;
-			let fy = y as f32 / nh as f32 * 2.2;
-			let wx = fbm2(fx, fy, 3, 0.5, seed ^ 3);
-			let wy = fbm2(fx + 5.2, fy + 1.3, 3, 0.5, seed ^ 4);
-			let n = fbm2(fx + wx * 1.5, fy + wy * 1.5, 5, 0.55, seed);
-			let m = fbm2(fx * 0.7 + wy, fy * 0.7 - wx, 3, 0.5, seed ^ 9);
-			let cloud = smoothstep(-0.1, 0.6, n);
-			let mut col = mixf(pal.ground(), a, cloud);
-			col = mixf(col, b, smoothstep(0.0, 0.7, m) * cloud);
-			col = mixf(col, c, smoothstep(0.35, 0.8, n * m * 2.0));
-			// Dark dust lanes.
-			let dust = smoothstep(0.1, 0.4, fbm2(fx * 2.0 - wx, fy * 2.0, 3, 0.5, seed ^ 7));
-			f.set(x, y, mixf(col, pal.ground(), dust * 0.7));
-		}
-	}
-	f
 }
 
 impl Scene for Twilight {
 	fn render(&mut self, cx: &Ctx, out: &mut Frame) {
 		let t = cx.t as f32;
-		let (cam, _fade, shot) = self.camera(t);
+		let cam = camera(t);
+		let shot = cam.shot;
 		let (w, h) = (self.w as f32, self.h as f32);
 		let detail = cx.detail;
 		// Background: the nebula, panned against the planet's drift for parallax, then the stars.
-		let pan_x = (cam[0] - 0.5) * -0.2 + sin(t * 0.01) * 0.03;
-		let pan_y = (cam[1] - 0.5) * -0.2;
-		let nb = &self.nebula;
+		let pan_x = (cam.centre_x - 0.5) * -0.2 + sin(t * 0.01) * 0.03;
+		let pan_y = (cam.centre_y - 0.5) * -0.2;
+		let nb = &self.shared.nebula;
 		let sx_step = ((nb.w as f32 * 0.8 / w) * 65_536.0) as i32;
 		let sy_step = ((nb.h as f32 * 0.8 / h) * 65_536.0) as i32;
 		let ox = (((0.1 + pan_x * 0.5) * nb.w as f32) * 65_536.0) as i32;
@@ -385,7 +75,7 @@ impl Scene for Twilight {
 				sx += sx_step;
 			}
 		}
-		for s in &self.stars {
+		for s in &self.shared.stars {
 			let x = fract(s.x + pan_x * 0.7) * w;
 			let y = fract(s.y + pan_y * 0.7) * h;
 			let tw = 0.65 + 0.35 * sin(t * s.twinkle * 2.0 + s.x * 40.0);
@@ -402,18 +92,18 @@ impl Scene for Twilight {
 			}
 		}
 		// The planet's frame: the light direction in view space, and the axis turned towards the viewer and rolled.
-		let pcx = cam[0] * w;
-		let pcy = cam[1] * h;
-		let r = cam[2] * h;
-		let tilt = cam[3];
-		let roll = cam[4];
-		let la = cam[5] + t * 0.004;
+		let pcx = cam.centre_x * w;
+		let pcy = cam.centre_y * h;
+		let r = cam.radius * h;
+		let tilt = cam.tilt;
+		let roll = cam.roll;
+		let la = cam.light_angle + t * 0.004;
 		let light = V3::new(cos(la), -0.3, sin(la)).norm();
-		let spin = t * self.spin_rate;
-		let cloud_spin = t * self.spin_rate * 1.35;
+		let spin = t * self.shared.spin_rate;
+		let cloud_spin = t * self.shared.spin_rate * 1.35;
 		// Moons and satellites, placed first, so those behind the planet are drawn before it.
 		let mut bodies: Vec<(f32, f32, f32, f32, u32, bool)> = Vec::new();
-		for (i, m) in self.moons.iter().enumerate() {
+		for (i, m) in self.shared.moons.iter().enumerate() {
 			let a = m.phase + t * m.speed;
 			let p = V3::new(
 				cos(a) * m.orbit,
@@ -423,7 +113,7 @@ impl Scene for Twilight {
 			let p = rotate_view(p, tilt * 0.3, roll);
 			bodies.push((pcx + p.x * r, pcy + p.y * r, p.z, m.radius * r, i as u32, false));
 		}
-		for (i, s) in self.sats.iter().enumerate() {
+		for (i, s) in self.shared.satellites.iter().enumerate() {
 			let a = s.phase + t * s.speed * if shot == 2 { 1.6 } else { 1.0 };
 			let local = V3::new(cos(a) * s.orbit, 0.0, sin(a) * s.orbit);
 			let p = V3::new(local.x, local.z * sin(s.incline), local.z * cos(s.incline));
@@ -431,10 +121,10 @@ impl Scene for Twilight {
 			bodies.push((pcx + p.x * r, pcy + p.y * r, p.z, 0.0, i as u32, true));
 		}
 		// The sun, behind everything but the stars, so the planet hides it as it passes: a small white-hot disc in a soft glow.
-		if self.sun && cam[6] > 0.0 {
+		if self.shared.sun && cam.sun_distance > 0.0 {
 			let d = sqrt(light.x * light.x + light.y * light.y).max(1e-3);
-			let sx = pcx + light.x / d * r * cam[6];
-			let sy = pcy + light.y / d * r * cam[6];
+			let sx = pcx + light.x / d * r * cam.sun_distance;
+			let sy = pcy + light.y / d * r * cam.sun_distance;
 			self.draw_sun(out, sx, sy);
 		}
 		for b in bodies.iter().filter(|b| b.2 < 0.0) {
@@ -448,10 +138,10 @@ impl Scene for Twilight {
 	}
 
 	fn hints(&self, cx: &Ctx) -> Hints {
-		let (_, fade, _) = self.camera(cx.t as f32);
+		let fade = camera(cx.t as f32).fade;
 		Hints {
 			threshold: 135,
-			streak_tint: mixf(self.pal.hue(0), 0xFFFFFF, 0.35),
+			streak_tint: mixf(self.shared.palette.hue(0), 0xFFFFFF, 0.35),
 			fade,
 			bloom_gain: 1.2,
 		}
@@ -473,8 +163,8 @@ impl Twilight {
 		let h = self.h as f32;
 		let core = (h * 0.014).max(1.5);
 		let reach = h * 0.17;
-		let glow = mixf(self.pal.sun, self.pal.hue(0), 0.35);
-		let hot = mixf(self.pal.sun, 0xFFFFFF, 0.75);
+		let glow = mixf(self.shared.palette.sun, self.shared.palette.hue(0), 0.35);
+		let hot = mixf(self.shared.palette.sun, 0xFFFFFF, 0.75);
 		let y0 = ((sy - reach) as i32).max(0);
 		let y1 = ((sy + reach) as i32 + 1).min(self.h as i32);
 		let x0 = ((sx - reach) as i32).max(0);
@@ -515,7 +205,7 @@ impl Twilight {
 		detail: Detail,
 	) {
 		let (w, h) = (self.w as i32, self.h as i32);
-		let halo = 1.0 + 0.22 * self.atmos;
+		let halo = 1.0 + 0.22 * self.shared.atmosphere;
 		let reach = r * halo;
 		let y0 = ((pcy - reach) as i32).max(0);
 		let y1 = ((pcy + reach) as i32 + 1).min(h);
@@ -526,16 +216,16 @@ impl Twilight {
 		let (cr, sr) = (cos(roll), sin(roll));
 		let (ct, st) = (cos(tilt), sin(tilt));
 		let m = [[cr, sr, 0.0], [-sr * ct, cr * ct, st], [sr * st, -cr * st, ct]];
-		let (mw, mh) = (self.mw as i32, self.mh as i32);
+		let (mw, mh) = (self.shared.map_width as i32, self.shared.map_height as i32);
 		let spin_u = fract(spin) * mw as f32;
 		let cloud_u = fract(cloud_spin) * mw as f32;
 		let smooth = detail >= Detail::Medium;
 		let shadows = detail >= Detail::Medium;
 		let lights_on = detail >= Detail::High;
 		let sheen = detail >= Detail::Ultra;
-		let atmos = self.atmos;
-		let city = mixf(self.pal.sun, 0xFFFFFF, 0.2);
-		let cloud_lit = mixf(self.pal.n(200), self.pal.sun, 0.1);
+		let atmos = self.shared.atmosphere;
+		let city = mixf(self.shared.palette.sun, 0xFFFFFF, 0.2);
+		let cloud_lit = mixf(self.shared.palette.n(200), self.shared.palette.sun, 0.1);
 		let scale_u = mw as f32 / TAU;
 		for py in y0..y1 {
 			let ny = (py as f32 + 0.5 - pcy) * inv_r;
@@ -552,7 +242,7 @@ impl Twilight {
 						let side = saturate((nx * light.x + ny * light.y) / d * 0.6 + 0.55);
 						let k = falloff * falloff * falloff * falloff * side * atmos * 1.3;
 						if k > 0.004 {
-							*pix = screen(*pix, self.atmos_ramp.at(k * 0.9));
+							*pix = screen(*pix, self.shared.atmosphere_ramp.at(k * 0.9));
 						}
 					}
 					continue;
@@ -567,24 +257,24 @@ impl Twilight {
 				let lon = atan2(p0, p2);
 				let u = lon * scale_u + spin_u;
 				let u16 = round_i(u * 65_536.0 / 256.0) << 8;
-				let ground = sample_map(&self.ground, mw, mh, u16, v16, smooth);
+				let ground = sample_map(&self.shared.ground, mw, mh, u16, v16, smooth);
 				// Light: a soft wrap round the terminator, which is tinted from the outer glow hue to the inner one.
 				let ndl = nx * light.x + ny * light.y + nz * light.z;
 				// Light is a colour: warm white by day, orange then rose at the terminator, purple dusk, indigo night.
-				let lc = self.light_ramp.c[(saturate((ndl + 0.3) * (1.0 / 1.3)) * 255.0) as usize];
+				let lc = self.shared.light_ramp.c[(saturate((ndl + 0.3) * (1.0 / 1.3)) * 255.0) as usize];
 				let mut c = tint(ground, lc);
 				if ndl < 0.0 && lights_on {
-					let l = sample_lights(&self.lights, mw, mh, u16, v16);
+					let l = sample_lights(&self.shared.lights, mw, mh, u16, v16);
 					if l > 0 {
 						c = screen(c, scale(city, l as u32 * (saturate(-ndl * 3.0) * 180.0) as u32 >> 8));
 					}
 				}
 				// Clouds, lit like the ground, with their shadow a little towards the dark side.
 				let cu = round_i((lon * scale_u + cloud_u) * 256.0) << 8;
-				let cloud = sample_cover(&self.clouds, mw, mh, cu, v16);
+				let cloud = sample_cover(&self.shared.clouds, mw, mh, cu, v16);
 				if shadows {
 					let su = cu + round_i(light.x * -6.0 * 65_536.0);
-					let sh = sample_cover(&self.clouds, mw, mh, su, v16 + round_i(light.y * 4.0 * 65_536.0));
+					let sh = sample_cover(&self.shared.clouds, mw, mh, su, v16 + round_i(light.y * 4.0 * 65_536.0));
 					c = scale(c, 256 - (sh as u32 * 90 >> 8));
 				}
 				if cloud > 0 {
@@ -595,14 +285,20 @@ impl Twilight {
 					let hz = light.z + 1.0;
 					let hv = (nx * light.x + ny * light.y + nz * hz) / sqrt(light.x * light.x + light.y * light.y + hz * hz);
 					if hv > 0.9 {
-						c = screen(c, scale(self.pal.sun, (powf(saturate((hv - 0.9) * 10.0), 3.0) * 70.0) as u32));
+						c = screen(
+							c,
+							scale(
+								self.shared.palette.sun,
+								(powf(saturate((hv - 0.9) * 10.0), 3.0) * 70.0) as u32,
+							),
+						);
 					}
 				}
 				// The atmosphere inside the limb.
 				let rim = 1.0 - nz;
 				let k = rim * rim * rim * atmos * saturate(ndl * 1.5 + 0.45) * 1.6;
 				if k > 0.003 {
-					c = screen(c, self.atmos_ramp.at(saturate(k)));
+					c = screen(c, self.shared.atmosphere_ramp.at(saturate(k)));
 				}
 				// Anti-alias the limb over the last pixel.
 				let edge = (1.0 - sqrt(d2)) * r;
@@ -617,9 +313,9 @@ impl Twilight {
 			// A satellite: a glint and a blinking light.
 			let blink = fract(t * 0.8 + idx as f32 * 0.37) < 0.12;
 			let c = if blink {
-				mixf(self.pal.sun, 0xFFFFFF, 0.6)
+				mixf(self.shared.palette.sun, 0xFFFFFF, 0.6)
 			} else {
-				self.pal.n(300)
+				self.shared.palette.n(300)
 			};
 			let (xi, yi) = (bx as i32, by as i32);
 			out.put(xi, yi, c);
@@ -633,7 +329,7 @@ impl Twilight {
 			}
 			return;
 		}
-		let m = &self.moons[idx as usize];
+		let m = &self.shared.moons[idx as usize];
 		let y0 = ((by - br) as i32).max(0);
 		let y1 = ((by + br) as i32 + 1).min(self.h as i32);
 		let x0 = ((bx - br) as i32).max(0);
