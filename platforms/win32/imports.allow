@@ -1,0 +1,57 @@
+# The functions the .scr files may import, as dll!Function, all exported by Windows 95 (and up) and by ReactOS.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# A trailing `32` marks a function only the Pentium build imports, a trailing `64` one only the x86-64 build imports (the window-long
+# calls are named differently there). Checked by hand against the Win32 reference's "Windows 95" column. No wide-character (...W) entry points.
+advapi32.dll!RegCloseKey
+advapi32.dll!RegCreateKeyExA
+advapi32.dll!RegOpenKeyExA
+advapi32.dll!RegQueryValueExA
+advapi32.dll!RegSetValueExA
+comctl32.dll!InitCommonControls
+gdi32.dll!GetStockObject
+gdi32.dll!SetStretchBltMode
+gdi32.dll!StretchDIBits
+kernel32.dll!ExitProcess
+kernel32.dll!GetCommandLineA
+kernel32.dll!GetModuleHandleA
+kernel32.dll!GetProcessHeap
+kernel32.dll!GetTickCount
+kernel32.dll!HeapAlloc
+kernel32.dll!HeapFree
+kernel32.dll!HeapReAlloc
+kernel32.dll!QueryPerformanceCounter
+kernel32.dll!QueryPerformanceFrequency
+user32.dll!BeginPaint
+user32.dll!CreateWindowExA
+user32.dll!DefWindowProcA
+user32.dll!DestroyWindow
+user32.dll!DialogBoxIndirectParamA
+user32.dll!DispatchMessageA
+user32.dll!EndDialog
+user32.dll!EndPaint
+user32.dll!GetClientRect
+user32.dll!GetCursorPos
+user32.dll!GetDC
+user32.dll!GetDlgItem
+user32.dll!GetDlgItemTextA
+user32.dll!GetForegroundWindow
+user32.dll!GetSystemMetrics
+user32.dll!GetWindowLongA 32
+user32.dll!GetWindowLongPtrA 64
+user32.dll!IsWindow
+user32.dll!MsgWaitForMultipleObjects
+user32.dll!LoadIconA
+user32.dll!PeekMessageA
+user32.dll!PostMessageA
+user32.dll!PostQuitMessage
+user32.dll!RegisterClassA
+user32.dll!ReleaseDC
+user32.dll!SendMessageA
+user32.dll!SetCursor
+user32.dll!SetDlgItemTextA
+user32.dll!SetWindowLongA 32
+user32.dll!SetWindowLongPtrA 64
+user32.dll!TranslateMessage
