@@ -13,6 +13,10 @@ use alloc::vec::Vec;
 
 use crate::math::{TAU, clamp, exp, ln, saturate, sin};
 
+pub mod collection;
+pub mod cracktro;
+pub mod ghostwriter;
+pub mod ink;
 pub mod maze;
 pub mod twilight;
 
@@ -34,6 +38,13 @@ pub struct Cues {
 	pub through: f32,
 	pub open: f32,
 	pub window: f32,
+	/// Ghostwriter: characters typed so far in this act (a drop means a new act or a rewind), and the dialog's presence, 0 to 1.
+	pub keys: u32,
+	pub dialog: f32,
+	/// Collection: the member playing (an index into `collection::MEMBERS`), the next one, and the cross-fade towards it, 0 to 1.
+	pub member: usize,
+	pub next_member: usize,
+	pub cross: f32,
 }
 
 /// A score: renders `out.len() / 2` stereo frames (left, right interleaved, in -1 to 1) for the cues of the block's start.
@@ -252,7 +263,10 @@ pub fn score_for(
 	match kind {
 		SaverKind::Twilight => Some(Box::new(twilight::TwilightScore::new(settings, seed, rate))),
 		SaverKind::Maze => Some(Box::new(maze::MazeScore::new(settings, seed, rate))),
-		_ => None,
+		SaverKind::Ink => Some(Box::new(ink::InkScore::new(settings, seed, rate))),
+		SaverKind::Cracktro => Some(Box::new(cracktro::CracktroScore::new(settings, seed, rate))),
+		SaverKind::Ghostwriter => Some(Box::new(ghostwriter::GhostwriterScore::new(settings, seed, rate))),
+		SaverKind::Collection => Some(Box::new(collection::CollectionScore::new(settings, seed, rate))),
 	}
 }
 

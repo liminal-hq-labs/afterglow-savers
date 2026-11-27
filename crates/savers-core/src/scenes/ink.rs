@@ -673,6 +673,19 @@ impl Scene for Ink {
 		}
 	}
 
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		let cyc = fract(t as f32 / CYCLE) * CYCLE;
+		let aurora = smoothstep(33.0, 38.0, cyc) * (1.0 - smoothstep(44.0, 50.0, cyc));
+		crate::audio::Cues {
+			t,
+			fade: 1.0,
+			shot: (t as f32 / CYCLE) as usize,
+			shot_t: cyc,
+			sun: aurora,
+			..crate::audio::Cues::default()
+		}
+	}
+
 	fn hints(&self, _cx: &Ctx) -> Hints {
 		Hints {
 			threshold: if self.pal.light { 235 } else { 120 },

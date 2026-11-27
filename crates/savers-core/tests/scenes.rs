@@ -217,3 +217,27 @@ fn scores_are_reproducible_and_gentle() {
 		assert!(rms > 100.0, "{kind:?}: RMS {rms:.0} is near silence");
 	}
 }
+
+/// Every saver has a score: reproducible, below full scale, and not silent (Ghostwriter's is quiet by design).
+#[test]
+fn every_saver_has_a_gentle_score() {
+	use savers_core::audio::{Engine, score_for};
+	for kind in SaverKind::ALL {
+		let render = || {
+			let mut s = Settings::defaults(kind);
+			s.set(Key::Duration, 30);
+			let mut scene = build(kind, &s, 5, 32, 18);
+			let score = score_for(kind, &s, 5, 22_050).expect("a score");
+			let mut engine = Engine::new(22_050, score, 1.0, 0.5);
+			let mut out = vec![0i16; 22_050 * 2 * 6];
+			engine.render(&mut out, &mut |t| scene.cues(t * 5.0));
+			out
+		};
+		let a = render();
+		assert_eq!(a, render(), "{kind:?}: the same seed gives the same samples");
+		let peak = a.iter().map(|&v| (v as i32).abs()).max().unwrap_or(0);
+		assert!(peak < 23_000, "{kind:?}: peak {peak} is within 3 dB of full scale");
+		let rms = (a.iter().map(|&v| (v as f64).powi(2)).sum::<f64>() / a.len() as f64).sqrt();
+		assert!(rms > 8.0, "{kind:?}: RMS {rms:.1} is silence");
+	}
+}

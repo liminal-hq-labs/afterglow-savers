@@ -100,6 +100,27 @@ impl Collection {
 	}
 }
 
+impl Collection {
+	/// Moves to turn `turn`: the prepared scene becomes the current one.
+	fn advance(&mut self, turn: usize) {
+		let n = self.order.len();
+		while self.current_index < turn {
+			self.current_index += 1;
+			let i = self.current_index % n;
+			self.current = match self.next.take() {
+				Some(s) => s,
+				None => (self.make)(
+					self.order[i],
+					&self.settings[i],
+					member_seed(self.seed, &self.settings[i], self.current_index),
+					self.w,
+					self.h,
+				),
+			};
+		}
+	}
+}
+
 /// A member's seed: its own setting, or one derived from the Collection's seed and its turn.
 fn member_seed(seed: u32, s: &Settings, turn: usize) -> u32 {
 	match s.get(Key::Seed) {
@@ -115,21 +136,7 @@ impl Scene for Collection {
 		let turn = (t / d) as usize;
 		let local = t - turn as f32 * d;
 		let n = self.order.len();
-		// Moving to a new turn: the prepared scene becomes the current one.
-		while self.current_index < turn {
-			self.current_index += 1;
-			let i = self.current_index % n;
-			self.current = match self.next.take() {
-				Some(s) => s,
-				None => (self.make)(
-					self.order[i],
-					&self.settings[i],
-					member_seed(self.seed, &self.settings[i], self.current_index),
-					self.w,
-					self.h,
-				),
-			};
-		}
+		self.advance(turn);
 		let start = turn as f32 * d;
 		let sub = Ctx {
 			t: (t - start + CROSS + LEAD) as f64,
@@ -169,6 +176,21 @@ impl Scene for Collection {
 			}
 			self.fade = 1.0;
 		}
+	}
+
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		let tf = t as f32;
+		let d = self.duration;
+		let turn = (tf / d) as usize;
+		let local = tf - turn as f32 * d;
+		self.advance(turn);
+		let n = self.order.len();
+		let index_of = |kind: SaverKind| MEMBERS.iter().position(|&m| m == kind).unwrap_or(0);
+		let mut c = self.current.cues((local + CROSS + LEAD) as f64);
+		c.member = index_of(self.order[turn % n]);
+		c.next_member = index_of(self.order[(turn + 1) % n]);
+		c.cross = if n > 1 { saturate((local - (d - CROSS)) / CROSS) } else { 0.0 };
+		c
 	}
 
 	fn hints(&self, cx: &Ctx) -> Hints {

@@ -1092,6 +1092,25 @@ impl Scene for Ghostwriter {
 		self.win = win;
 	}
 
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		let tf = t as f32;
+		let (act, lt, len, pass) = self.act_at(tf);
+		let st = self.page(act, lt, len, pass, tf);
+		crate::audio::Cues {
+			t,
+			fade: 1.0,
+			shot: ACTS.iter().position(|a| a.0 == act).unwrap_or(0),
+			shot_t: lt,
+			keys: st.text.len() as u32,
+			dialog: st.dialog,
+			hold: st
+				.typo
+				.as_ref()
+				.is_some_and(|(ty, now)| *now >= ty.popup + 0.9 && *now < ty.popup + 1.0),
+			..crate::audio::Cues::default()
+		}
+	}
+
 	fn hints(&self, _cx: &Ctx) -> Hints {
 		Hints {
 			threshold: 225,

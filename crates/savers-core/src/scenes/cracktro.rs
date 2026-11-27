@@ -538,6 +538,20 @@ impl Scene for Cracktro {
 		self.stage = stage;
 	}
 
+	fn cues(&mut self, t: f64) -> crate::audio::Cues {
+		let tf = t as f32;
+		let index = floor_i(tf / PART_LEN).max(0) as usize;
+		let part = self.order[index % self.order.len()];
+		crate::audio::Cues {
+			t,
+			fade: 1.0,
+			shot: PARTS.iter().position(|&p| p == part).unwrap_or(0),
+			shot_t: tf - index as f32 * PART_LEN,
+			member: index,
+			..crate::audio::Cues::default()
+		}
+	}
+
 	fn hints(&self, cx: &Ctx) -> Hints {
 		let t = cx.t as f32;
 		let part = self.order[(floor_i(t / PART_LEN).max(0) as usize) % self.order.len()];
