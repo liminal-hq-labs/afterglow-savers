@@ -35,5 +35,6 @@ bash scripts/preview-video.sh ink                                              #
 
 ## Wine and ReactOS
 
+- `scripts/wine-audio.sh` runs each `.scr` under Wine with its sound recorded from a private virtual sink and checks it is present and unbroken (and absent with `Sound` off); it needs `pactl`, `parec`, Xvfb, xdotool and numpy. `scripts/guest/guest.py --audio out.wav` records a ReactOS guest's AC97 output.
 - `scripts/smoke-wine.sh` runs each `.scr` under Wine on its own Xvfb with `/s` for a few seconds, captures the screen from that Xvfb, checks the picture is not blank, and runs `/c` and `/p` against a host window.
 - `scripts/guest/` copies the Afterglow ReactOS image to `~/.cache/afterglow-savers/guest`, adds the `.scr` files and the registry settings, boots it headless in QEMU and takes `screendump`s through the monitor.

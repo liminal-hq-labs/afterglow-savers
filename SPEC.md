@@ -41,6 +41,7 @@ The first letter after a `/` or `-`, in either case, picks the mode, as `scrnsav
 - The pointer is hidden for the run (`ShowCursor(FALSE)`, restored on exit, with `SetCursor(NULL)` on `WM_SETCURSOR`); the preview pane and the dialogs leave it alone.
 - `SC_SCREENSAVE`, `SC_CLOSE`, `SC_NEXTWINDOW` and `SC_PREVWINDOW` system commands are refused while it runs.
 - It fades up from black over one second and ends at once when told to (no fade out: the user wants their desktop).
+- **Sound** (SAV-D34 to D38, D48): with `Sound` on and `Volume` above 0 it plays the saver's generated score through `waveOut` (16-bit stereo, the rate from `Detail`: 22,050, 32,000, 44,100 or 48,000 Hz, 22,050 Hz if the device refuses it), fading up with the picture and stopping at once when the saver ends. It is silent in `/p` and `/c`, and silent, with no message, when no wave device opens. The Collection follows the member on screen, cross-faded with the picture.
 - No password code: NT and ReactOS lock the workstation through Winlogon's `ScreenSaverIsSecure`; Windows 9x passwords are not supported (SAV-D17).
 
 ## 5. Preview (`/p`)

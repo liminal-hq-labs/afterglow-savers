@@ -12,7 +12,7 @@ The resumable log of where the work stands. Newest state first; each phase lists
 - **P5** Quill Ghostwriter: the Win32 scene and `.scr` done; the Windows 3.x `QUILLGW.SCR` done (SAV-D37: go for Windows 3.x, no-go for ReactOS's list).
 - **P6** Twilight on the graphics card: renderer landed (`crates/savers-gpu`, parity 2.7 levels mean); WP-gpu-linux landed (SAV-D42 to D46, `docs/linux-edition.md`): `platforms/linux` runs Twilight fullscreen, in a window, in xscreensaver's window and headless, with settings in a TOML file, a render scale and frame cap, cpal sound, an installer under `~/.local`, and `make check-gpu` (Xvfb with lavapipe: window parity 2.4 levels mean, exit rules, hack, sound). lavapipe: 31 fps at 1080p and 5.2 fps at 4K (27 fps at 4K and 50% scale); the Radeon RX 7800 XT headless 1.0 ms a frame at 4K. Wayland, a real GPU window, PipeWire, GNOME and KDE are not exercised yet.
 - **P7** the Afterglow settings dialog: shell landed; WP-dialog-v2-art (banner moments, swatches) open.
-- **P8** audio: the engine and all six scores done (SAV-D34 to D36, D38); every preview video has sound. WP-audio-win32 (waveOut) queued for a builder.
+- **P8** audio: the engine and all six scores done (SAV-D34 to D36, D38); every preview video has sound. WP-audio-win32 done (SAV-D47, D48): every Win32 `.scr` plays its score through `waveOut`; checked under Wine and in the ReactOS guest. Twilight's cost on a Pentium III (an estimated 12% to 26%) is the open watch.
 - **P9** threads for modern machines (SAV-D41, `docs/threads.md`): WP-threads queued after WP-audio-win32.
 
 Open small items: the Maze's day look (it ignores Light), an icon for `QUILLGW.SCR`, WP-art (icons and hero).
