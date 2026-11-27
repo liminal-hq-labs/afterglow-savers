@@ -21,6 +21,7 @@ const SCENES: &[SaverKind] = &[
 	SaverKind::Cracktro,
 	SaverKind::Maze,
 	SaverKind::Collection,
+	SaverKind::Ghostwriter,
 ];
 
 fn saver(kind: SaverKind, detail: u32, w: usize, h: usize) -> Saver {

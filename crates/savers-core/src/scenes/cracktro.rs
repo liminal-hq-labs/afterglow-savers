@@ -167,7 +167,8 @@ impl Cracktro {
 			m.push_str("          ");
 			m
 		};
-		let strip = font::render(&message, (sh / 6).max(12), 0.95);
+		// Scrollers shout: the message is set in capitals.
+		let strip = font::render(&message.to_uppercase(), (sh / 5).max(12), 0.95);
 		let stars = (0..(sw / 3).max(20))
 			.map(|_| (rng.f(), rng.f(), rng.range(0.2, 1.0)))
 			.collect();

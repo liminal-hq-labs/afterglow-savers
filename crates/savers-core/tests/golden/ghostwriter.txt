@@ -1,0 +1,12 @@
+detail 0 t 2: d3e15e303bd8eec8
+detail 0 t 15: 45143d3dfd700d78
+detail 0 t 40: 6d9adc7bbe31cf56
+detail 1 t 2: 430d8db87a1dac36
+detail 1 t 15: 5d207c4112bd8305
+detail 1 t 40: 750f378f69bc3018
+detail 2 t 2: a0f2a071170802ad
+detail 2 t 15: bf9bce127d805231
+detail 2 t 40: 819113b830e95771
+detail 3 t 2: a0f2a071170802ad
+detail 3 t 15: bf9bce127d805231
+detail 3 t 40: 819113b830e95771

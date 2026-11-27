@@ -3,16 +3,70 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-//! SAV-D15. Capitals, digits and common punctuation; lower case is drawn as capitals, and anything else as `?`. A text is drawn
-//! once into an alpha strip, anti-aliased by the distance from each pixel to the nearest stroke.
+//! SAV-D15. Capitals, lower case (x-height from 2.5 to 6, descenders to 7.6), digits and common punctuation; anything else is drawn
+//! as `?`. A text is drawn once into an alpha strip, anti-aliased by the distance from each pixel to the nearest stroke.
 
 use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::math::{saturate, sqrt};
 
-/// A glyph: its advance in grid units and its strokes, as "x,y x,y|x,y x,y" (y down, 0 to 6; a lone point is a dot).
+/// A glyph: its advance in grid units and its strokes, as "x,y x,y|x,y x,y" (y down, capitals 0 to 6; a lone point is a dot).
 fn glyph(c: char) -> (f32, &'static str) {
+	match c {
+		'a' => (
+			4.6,
+			"3.5,2.5 3.5,6|3.5,3.3 2.6,2.5 1.2,2.5 0.3,3.4 0.3,5.1 1.2,6 2.6,6 3.5,5.2",
+		),
+		'b' => (4.6, "0.3,0 0.3,6|0.3,3.3 1.2,2.5 2.6,2.5 3.5,3.4 3.5,5.1 2.6,6 1.2,6 0.3,5.2"),
+		'c' => (4.4, "3.4,3.2 2.6,2.5 1.2,2.5 0.3,3.4 0.3,5.1 1.2,6 2.6,6 3.4,5.3"),
+		'd' => (4.6, "3.5,0 3.5,6|3.5,3.3 2.6,2.5 1.2,2.5 0.3,3.4 0.3,5.1 1.2,6 2.6,6 3.5,5.2"),
+		'e' => (
+			4.6,
+			"0.3,4.2 3.5,4.2 3.5,3.4 2.6,2.5 1.2,2.5 0.3,3.4 0.3,5.1 1.2,6 2.6,6 3.4,5.4",
+		),
+		'f' => (3.4, "3,0.2 2.2,0 1.6,0.6 1.6,6|0.4,2.6 3,2.6"),
+		'g' => (
+			4.6,
+			"3.5,2.5 3.5,6.8 2.6,7.6 1.2,7.6 0.5,7|3.5,3.3 2.6,2.5 1.2,2.5 0.3,3.4 0.3,4.8 1.2,5.7 2.6,5.7 3.5,4.9",
+		),
+		'h' => (4.6, "0.3,0 0.3,6|0.3,3.3 1.2,2.5 2.6,2.5 3.5,3.4 3.5,6"),
+		'i' => (2.0, "1,2.5 1,6|1,1"),
+		'j' => (2.6, "1.6,2.5 1.6,6.9 0.9,7.6 0.2,7.4|1.6,1"),
+		'k' => (4.0, "0.3,0 0.3,6|3.2,2.5 0.3,4.6|1.4,3.8 3.4,6"),
+		'l' => (2.2, "1,0 1,5.4 1.6,6"),
+		'm' => (
+			5.6,
+			"0.3,2.5 0.3,6|0.3,3.2 1,2.5 1.8,2.5 2.4,3.2 2.4,6|2.4,3.2 3.1,2.5 3.9,2.5 4.5,3.2 4.5,6",
+		),
+		'n' => (4.6, "0.3,2.5 0.3,6|0.3,3.3 1.2,2.5 2.6,2.5 3.5,3.4 3.5,6"),
+		'o' => (4.6, "1.2,2.5 2.6,2.5 3.5,3.4 3.5,5.1 2.6,6 1.2,6 0.3,5.1 0.3,3.4 1.2,2.5"),
+		'p' => (
+			4.6,
+			"0.3,2.5 0.3,7.6|0.3,3.3 1.2,2.5 2.6,2.5 3.5,3.4 3.5,5.1 2.6,6 1.2,6 0.3,5.2",
+		),
+		'q' => (
+			4.6,
+			"3.5,2.5 3.5,7.6|3.5,3.3 2.6,2.5 1.2,2.5 0.3,3.4 0.3,5.1 1.2,6 2.6,6 3.5,5.2",
+		),
+		'r' => (3.5, "0.3,2.5 0.3,6|0.3,3.6 1.3,2.6 2.4,2.5 3.1,2.8"),
+		's' => (
+			4.2,
+			"3.3,3.1 2.6,2.5 1.1,2.5 0.4,3.1 0.4,3.8 1.1,4.3 2.7,4.3 3.4,4.9 3.4,5.5 2.7,6 1.1,6 0.3,5.4",
+		),
+		't' => (3.4, "1.4,0.8 1.4,5.4 2,6 2.9,6|0.3,2.6 2.9,2.6"),
+		'u' => (4.6, "0.3,2.5 0.3,5.2 1.2,6 2.6,6 3.5,5.1|3.5,2.5 3.5,6"),
+		'v' => (4.4, "0.2,2.5 1.9,6 3.6,2.5"),
+		'w' => (5.2, "0.2,2.5 1.2,6 2.25,3.3 3.3,6 4.3,2.5"),
+		'x' => (4.4, "0.3,2.5 3.5,6|3.5,2.5 0.3,6"),
+		'y' => (4.4, "0.2,2.5 1.9,6|3.6,2.5 1.6,7.6 0.6,7.6"),
+		'z' => (4.4, "0.3,2.5 3.5,2.5 0.3,6 3.5,6"),
+		_ => glyph_upper(c),
+	}
+}
+
+/// Capitals, digits and punctuation.
+fn glyph_upper(c: char) -> (f32, &'static str) {
 	match c.to_ascii_uppercase() {
 		'A' => (5.0, "0,6 2,0 4,6|0.7,4 3.3,4"),
 		'B' => (5.0, "0,0 0,6 3,6 4,5 4,4 3,3 0,3|0,0 3,0 4,1 4,2 3,3"),
@@ -135,7 +189,7 @@ pub struct Strip {
 
 /// The width in pixels a text takes at a height of `h` pixels.
 pub fn measure(text: &str, h: usize) -> usize {
-	let unit = h as f32 / 8.0;
+	let unit = h as f32 / 9.0;
 	let mut w = 0.0;
 	for c in text.chars() {
 		w += (glyph(c).0 + 0.6) * unit;
@@ -143,14 +197,15 @@ pub fn measure(text: &str, h: usize) -> usize {
 	w as usize + 1
 }
 
-/// Draws `text` at a height of `h` pixels (a cap height of three quarters of it), strokes `weight` grid units thick (0.9 is bold).
+/// Draws `text` at a height of `h` pixels (a cap height of two thirds of it, room below for descenders), strokes `weight` grid units
+/// thick (0.9 is bold).
 pub fn render(text: &str, h: usize, weight: f32) -> Strip {
-	let unit = h as f32 / 8.0;
+	let unit = h as f32 / 9.0;
 	let w = measure(text, h);
 	let mut alpha = vec![0u8; w * h];
 	let mut segs = Vec::new();
 	let radius = weight * 0.5;
-	let top = unit * 0.7;
+	let top = unit * 0.6;
 	let mut pen = unit * 0.3;
 	for c in text.chars() {
 		let (adv, spec) = glyph(c);
@@ -239,7 +294,6 @@ impl Atlas {
 	}
 
 	fn index(c: char) -> usize {
-		let c = c.to_ascii_uppercase();
 		if (' '..='~').contains(&c) {
 			c as usize - 32
 		} else {
@@ -308,7 +362,7 @@ mod tests {
 		let inked = s.alpha.iter().filter(|&&a| a > 128).count();
 		assert!(inked > 200, "{inked}");
 		// The first column of the H is solid down its height.
-		let col = (32.0 / 8.0 * 0.3 + 0.5) as usize;
+		let col = (32.0 / 9.0 * 0.3 + 0.5) as usize;
 		assert!(s.alpha[16 * s.w + col] > 128);
 		assert_eq!(parse("3.25"), Some(3.25));
 		assert_eq!(parse("-0.5"), Some(-0.5));

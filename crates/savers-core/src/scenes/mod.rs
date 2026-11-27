@@ -13,6 +13,7 @@ use crate::settings::{SaverKind, Settings};
 
 pub mod collection;
 pub mod cracktro;
+pub mod ghostwriter;
 pub mod ink;
 pub mod maze;
 pub mod twilight;
@@ -22,8 +23,9 @@ pub fn build(kind: SaverKind, settings: &Settings, seed: u32, w: usize, h: usize
 	match kind {
 		SaverKind::Cracktro => Box::new(cracktro::Cracktro::new(settings, seed, w, h)),
 		SaverKind::Collection => Box::new(collection::Collection::new(settings, &[], seed, w, h, build)),
+		SaverKind::Ghostwriter => Box::new(ghostwriter::Ghostwriter::new(settings, seed, w, h)),
 		SaverKind::Maze => Box::new(maze::MazeScene::new(settings, seed, w, h)),
 		SaverKind::Twilight => Box::new(twilight::Twilight::new(settings, seed, w, h)),
-		_ => Box::new(ink::Ink::new(settings, seed, w, h)),
+		SaverKind::Ink => Box::new(ink::Ink::new(settings, seed, w, h)),
 	}
 }
