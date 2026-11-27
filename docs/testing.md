@@ -10,7 +10,9 @@
 - the Win32 builds for i586 and x86_64, their structure, import and Pentium checks, and the size budgets (`scripts/check-sizes.sh`)
 - `scripts/repro-win32.sh`: three builds in three directories, compared byte for byte
 
-`make check-fast` is the first four. The Wine smoke (`scripts/smoke-wine.sh`) and the ReactOS guest run (`scripts/guest/`) are separate, because they take minutes and need Xvfb, Wine or QEMU.
+- `scripts/check-archive-build.sh` (`make check-archive`): a `git archive` of HEAD, extracted and built with `scripts/build-scr.sh` in a folder of its own, must give the same six SHA-256 sums as the working tree. `make build-scr` writes the files and `SHA256SUMS` to `target/scr-out`.
+
+`make check-fast` is the first four. CI runs one job for each of these: the Win32 builds for i586 and x86-64 with their checks, the Win32 clippy and tests, the image build contract (which uploads `scr-i586` and prints the sums in the job summary), the Windows 3.x build (which uploads `QUILLGW.SCR`) and the reproducible build. The Wine smoke (`scripts/smoke-wine.sh`) and the ReactOS guest run (`scripts/guest/`) are separate, because they take minutes and need Xvfb, Wine or QEMU.
 
 `make check-gpu` is separate too: the Linux edition (`platforms/linux`) on its own Xvfb with the lavapipe software Vulkan driver, five tests for the window, fullscreen, the exit rules, the xscreensaver hack and the sound (captured through ALSA's file plug-in). It needs Xvfb, ImageMagick's `import`, `xdotool` and `vulkan-swrast`, and says SKIP when one is missing. See `docs/linux-edition.md`.
 

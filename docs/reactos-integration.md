@@ -10,7 +10,7 @@ How reactos-liminal would build the Afterglow savers and install them in its ima
 | `AGCRACK.SCR` | Afterglow Cracktro | yes | yes | inherited |
 | `AGTWILIT.SCR` | Afterglow Twilight | yes | yes | inherited |
 | `AGINK.SCR` | Afterglow Ink | yes | yes | inherited |
-| `AGCOLLCT.SCR` | Afterglow Collection | yes, the selected saver | yes, the selected saver | inherited, not selected (SAV-D57) |
+| `AGCOLLCT.SCR` | Afterglow Collection | yes | yes | inherited (none selected, SAV-D57) |
 | `AGQUILL.SCR` | Quill Ghostwriter | no | no | **only here**, never selected (SAV-D22) |
 
 All go to `ReactOS/system32`, where the Display applet's list looks (docs/reactos-scr.md). The i586 builds are the ones for the image; the x86_64 builds are for 64-bit Windows and are not used.
@@ -44,7 +44,9 @@ destination = "ReactOS/system32/AGMAZE.SCR"
 
 ## Selecting the screensaver
 
-`guest/reg/quiet.reg` turns the screensaver off (`ScreenSaveActive` `"0"`, `ScreenSaveTimeOut` `"0"` under `HKEY_CURRENT_USER\Control Panel\Desktop`). A new named registry file, `screensaver-afterglow`, listed **after** `quiet` in `settings.reg_files` (reg files apply in order), selects the Collection:
+None is selected in any image (SAV-D59): the recipes add no registry file, and `quiet.reg` stays the only screensaver setting (the list shows "(None)"). The earlier plan selected the Collection after ten minutes; to bring that back, add the file below to `reg_files` after `quiet`.
+
+`guest/reg/quiet.reg` turns the screensaver off (`ScreenSaveActive` `"0"`, `ScreenSaveTimeOut` `"0"` under `HKEY_CURRENT_USER\Control Panel\Desktop`). A named registry file, `screensaver-afterglow`, listed **after** `quiet` in `settings.reg_files` (reg files apply in order), would select the Collection:
 
 ```text
 Windows Registry Editor Version 5.00
@@ -65,17 +67,17 @@ These are exactly the values the Display applet writes (docs/reactos-scr.md, "Ap
 
 ## The compact recipe
 
-The `base` trim profile removes ReactOS's own eight `.scr` files (`profiles/base.txt`), and the compact recipe inherits the base recipe's `[[files]]`, so it would get the Afterglow savers unless it removes them. The five main files are 1,025,536 bytes together at i586 (`docs/progress.md`), about 0.45 MB in the zstd parts, and the compact image keeps them, where they are its only screensavers (SAV-D55). If the compact image should have none, add a trim extra to `afterglow-compact.toml` with `f ReactOS/system32/AG*.SCR` lines (one per file; the trim takes no wildcards) and drop `screensaver-afterglow` from its `reg_files`.
+The `base` trim profile removes ReactOS's own eight `.scr` files (`profiles/base.txt`), and the compact recipe inherits the base recipe's `[[files]]`, so it would get the Afterglow savers unless it removes them. The five main files are 1,025,536 bytes together at i586 (`docs/progress.md`), about 0.45 MB in the zstd parts, and the compact image keeps them, where they are its only screensavers (SAV-D55). If the compact image should have none, add a trim extra to `afterglow-compact.toml` with one `f ReactOS/system32/AG….SCR` line per file (the trim takes no wildcards). The full image keeps ReactOS's own eight savers beside the five; the compact image has only Afterglow's.
 
 ## Quill's recipe
 
-Quill's remix recipe (`site/try-reactos/qagrr/qagrr.toml` in the Quill repository) extends the compact recipe and so inherits the five Afterglow savers. Its `reg_files` list replaces the base recipe's named files, so it does not inherit `screensaver-afterglow`, and `quiet.reg` keeps the screensaver off in the web demo (SAV-D57). It adds Ghostwriter with one more `[[files]]` entry, `built:afterglow-savers/AGQUILL.SCR` to `ReactOS/system32/AGQUILL.SCR`, and its own `[builds.afterglow-savers.outputs]` line for that file's sum (tables merge key by key); nothing in its registry selects it: it shows in the Screen Saver list as "Quill Ghostwriter" for people to find (SAV-D22). The Windows 3.x edition (`QUILLGW.SCR`, SAV-D23) is not placed in `system32` unless the guest shows that the Display applet can start a 16-bit `.SCR`.
+Quill's remix recipe (`site/try-reactos/qagrr/qagrr.toml` in the Quill repository) extends the compact recipe and so inherits the five Afterglow savers. Nothing in the base recipe selects a saver, and `quiet.reg` keeps the screensaver off in the web demo (SAV-D57). It adds Ghostwriter with one more `[[files]]` entry, `built:afterglow-savers/AGQUILL.SCR` to `ReactOS/system32/AGQUILL.SCR`, and its own `[builds.afterglow-savers.outputs]` line for that file's sum (tables merge key by key); nothing in its registry selects it: it shows in the Screen Saver list as "Quill Ghostwriter" for people to find (SAV-D22). The Windows 3.x edition (`QUILLGW.SCR`, SAV-D23) is not placed in `system32` unless the guest shows that the Display applet can start a 16-bit `.SCR`.
 
 ## Checks for the integration
 
 - `rl image` with the savers: the five files in `system32` with their pinned sums.
-- The guest: Display Properties > Screen Saver lists "Afterglow Collection", "Afterglow Cracktro", "Afterglow Ink", "Afterglow Maze" and "Afterglow Twilight" by their string 1; the preview runs in the monitor; Settings opens each dialog; Preview runs full screen and a key ends it; after the timeout the Collection starts on its own.
-- The compact image: the same, or none, by the owner's choice below.
+- The guest: Display Properties > Screen Saver lists "Afterglow Collection", "Afterglow Cracktro", "Afterglow Ink", "Afterglow Maze" and "Afterglow Twilight" by their string 1; the preview runs in the monitor; Settings opens each dialog; Preview runs full screen and a key ends it; after the timeout the Collection, picked in the test copy with a short timeout, starts on its own.
+- The compact image: the same five, and none of ReactOS's own.
 
 ## Open questions
 
