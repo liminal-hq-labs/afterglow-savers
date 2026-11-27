@@ -126,7 +126,12 @@ impl Saver {
 			} else {
 				s.get(Key::Streaks)
 			},
-			vignette: s.get(Key::Vignette),
+			// On a light (day) ground a full vignette reads as grime, so it is halved.
+			vignette: if self.pal.light {
+				s.get(Key::Vignette) / 2
+			} else {
+				s.get(Key::Vignette)
+			},
 			grain: if self.preview { 0 } else { s.get(Key::Grain) },
 			letterbox: if s.get(Key::Letterbox) == 1 && !self.preview {
 				if wide > 1.5 { 2.39 } else { 1.85 }
