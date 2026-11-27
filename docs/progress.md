@@ -15,6 +15,8 @@ The resumable log of where the work stands. Newest state first; each phase lists
 - **P8** audio: the engine and all six scores done (SAV-D34 to D36, D38); every preview video has sound. WP-audio-win32 done (SAV-D47, D48): every Win32 `.scr` plays its score through `waveOut`; checked under Wine and in the ReactOS guest. Twilight's cost on a Pentium III (an estimated 12% to 26%) is the open watch.
 - **P9** threads for modern machines (SAV-D41, D51, D52, `docs/threads.md`): WP-threads done. The core shares the finishing chain and the five scenes between bands of rows with the same bytes at any band count; the x86-64 `.scr` files run a worker pool in full-screen runs of a million pixels or more; `savers-preview threads` times it. At 1080p 100% Ultra two threads give 48 to 96 fps for Cracktro, Ghostwriter, Maze and Twilight and four give Ink 39 fps (`docs/threads.md`, Results). Checked under Wine (`bandcheck.exe`); not yet in a ReactOS guest, on a real Windows machine or on a processor with fewer than eight cores.
 
+- **P10** packing (SAV-D54 to D58, `docs/packing.md`): planned. WP-PACK-1 (the image build contract and CI) and WP-PACK-2 (the ReactOS guest check with the dialog) here; WP-PACK-3 to WP-PACK-5 in reactos-liminal; WP-PACK-6 (the remix) and WP-PACK-7 (Quill's installers) in Quill. Next: WP-PACK-1.
+
 Open small items: the Maze's day look (it ignores Light), WP-art (icons and hero). `QUILLGW.SCR` has its icon (SAV-D50).
 
 ## Measurements
@@ -54,7 +56,6 @@ Each has a default in place; the file or setting named swaps it.
 - **The video audio level:** lifted to about -20 dBFS RMS for listening (`scripts/preview-audio.sh`, its `GAIN_DB`); the savers themselves play at `Volume` 28.
 - **The Cracktro's music:** a gentle generated chiptune at the quiet default; `audio::score_for` can return none for silence.
 - **Ghostwriter's key ticks:** very quiet; their gain is in `audio/ghostwriter.rs`.
-- **The compact ReactOS image:** recommended to keep the five Afterglow savers (`docs/reactos-integration.md`).
-- **The default saver and timeout in the image:** the Collection after ten minutes (`docs/reactos-integration.md`).
+- **Packing:** the compact image, the default saver and timeout, the remix's selection, the image's saver settings, ReactOS's own savers and Ghostwriter's placement by Quill's installers each have a default in `docs/packing.md` (Owner decisions).
 - **Twilight's loop:** stays as it is (a designed fade through black at the 90-second wrap, not pixel-periodic), as the owner decided.
 - **Not yet verified:** sound in the ReactOS guest (AC97 capture, with WP-audio-win32), the pointer-hiding fix in the guest, Windows 95 itself, real hardware, and a Pentium III's real frame rate (the estimates come from a reference loop).
