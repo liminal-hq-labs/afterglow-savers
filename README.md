@@ -3,6 +3,7 @@
 <p align="center"><img src="assets/hero.svg" alt="Afterglow Screensavers — four screensavers and a collection for the Afterglow ReactOS" width="100%"></p>
 
 <p align="center">
+  <a href="https://github.com/liminal-hq-labs/afterglow-savers/actions/workflows/ci.yml"><img src="https://github.com/liminal-hq-labs/afterglow-savers/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <img src="https://img.shields.io/badge/status-experimental-a3e635" alt="Status: experimental">
   <img src="https://img.shields.io/badge/licence-Apache--2.0%20OR%20MIT-3fb950" alt="Licence: Apache-2.0 OR MIT">
 </p>
@@ -21,7 +22,7 @@ There is also a fifth, for Quill users to find: **Quill Ghostwriter**, a documen
 
 Every saver plays a quiet generated soundtrack while it runs (untick "Play sound" in its settings to keep it silent; the preview in Display Properties is always silent). Every saver is drawn by a software renderer on the CPU (no OpenGL), in a tiny `no_std` Rust program with no C runtime that runs on a Pentium. Each has a quality ladder, from a quarter-resolution render for a Pentium III to full resolution with every effect on a modern machine, and the same finishing: glow, light streaks, vignette, film grain, optional letterbox.
 
-> **Status:** experimental, local only, no releases. All four scenes, the Collection and Quill Ghostwriter render on the host and are tested; the Windows `.scr` programs are being built, then run in the ReactOS guest.
+> **Status:** experimental, no releases. All four scenes, the Collection and Quill Ghostwriter render on the host and are tested; the Windows `.scr` programs are being built, then run in the ReactOS guest.
 
 ## Install
 
@@ -60,6 +61,14 @@ cargo run -p savers-preview --release -- bench --scene ink --size 800x600
 - [docs/linux-edition.md](docs/linux-edition.md): the Linux edition on the graphics card
 - [docs/testing.md](docs/testing.md): the gate, the preview tool and the guests
 
+## Contributing
+
+Issues and pull requests are welcome. The house rules are in [AGENTS.md](AGENTS.md); run the checks it lists before opening a pull request.
+
+## Part of Liminal HQ Labs
+
+Afterglow Screensavers is a [Liminal HQ Labs](https://github.com/liminal-hq-labs) experiment. Experiments from Liminal HQ — early, rough and open. If it proves itself, it [graduates](https://github.com/liminal-hq-labs/.github/blob/main/docs/labs-charter.md#graduation) to [Liminal HQ](https://github.com/liminal-hq).
+
 ## Licence
 
-Dual-licensed under [Apache-2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT), at your option.
+Licensed under either of the [Apache License, Version 2.0](LICENSE-APACHE) or the [MIT licence](LICENSE-MIT), at your option.

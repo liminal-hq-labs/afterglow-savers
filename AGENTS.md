@@ -7,6 +7,7 @@
 - [Markdown formatting](#markdown-formatting)
 - [Authoring voice](#authoring-voice)
 - [Commit messages](#commit-messages)
+- [Pull requests](#pull-requests)
 - [Git workflow](#git-workflow)
 - [Areas and landing](#areas-and-landing)
 - [Local tooling](#local-tooling)
@@ -45,21 +46,32 @@ Afterglow Screensavers is a [Liminal HQ Labs](https://github.com/liminal-hq-labs
 - End with a `Co-Authored-By:` trailer naming the model that wrote the change (Opus work signs as Opus, Sonnet as Sonnet).
 - Write the message to a file with a single-quoted heredoc and commit with `git commit -F <file>`. Check the result with `git log -1 --pretty=fuller`.
 
+## Pull requests
+
+- **Title:** capitalized, imperative, about 70 characters, no Conventional Commit prefix, outcome-focused.
+- **Body:** `## Summary` with flat bullets that open with a **bold lead-in**, then `## Test plan` with `- [x]` or `- [ ]` items naming the commands run. Finish with what was not verified.
+- **Labels:** one of `enhancement`, `bug`, `documentation`, `testing`, `ci`, `build`, `chore`, plus scope labels (`win16`, `win32`, `linux`, `art`, `audio`) where useful.
+- CI runs the host checks only: Markdown lint, licence headers, the hero banner, rustfmt, clippy and the tests. `make check` stays the full gate, including the Win32 and Windows 3.x builds, the size and import checks, the byte-identical rebuild and the Wine run.
+
 ## Git workflow
 
-- `main` is the only long-lived branch. There is **no remote**: never add one, never push, tag or publish.
+- `main` is the default and only long-lived branch. Work on topic branches (`feat/`, `fix/issue-<n>-…`, `docs/`, `chore/`, `ci/`, `build/`); never commit to `main`.
+- **Merge commits only.** No squash and no rebase merges. Branches are deleted on merge.
+- **Never** push, tag, publish or dispatch workflows unless asked.
 - **Never** run `git add -A` or `git commit -a`. Stage explicit paths.
+- Prefer the `gh` CLI for GitHub work.
 - Planning files such as `PLAN.md` stay out of git. `docs/progress.md` is the resumable log of where the work stands.
 
 ## Areas and landing
 
-[`docs/landing.md`](docs/landing.md) is canonical. In short: one builder per area at a time; work lands straight onto `main` with `make check` passing before every commit; two or more builders at once each use a worktree at `~/source/worktrees/afterglow-savers/<topic>` and land by `git rebase main` and `git merge --ff-only`.
+[`docs/landing.md`](docs/landing.md) is canonical. In short: one builder per area at a time; `make check` passes before every commit; each builder uses a worktree at `~/source/worktrees/afterglow-savers/<topic>` on a topic branch and lands by pull request with a merge commit.
 
 ## Local tooling
 
 - **Editor settings:** `.editorconfig` is authoritative: tabs everywhere except YAML.
 - **Rust** is formatted with rustfmt using hard tabs (`rustfmt.toml`). `cargo clippy -- -D warnings` must pass.
 - **Toolchain:** Rust 1.98.0 (`rust-toolchain.toml`), `cargo nextest`. Set `CARGO_BUILD_JOBS=4`, and run one heavy tool (cargo, Wine, QEMU) at a time.
+- **Shared CI images** come from [`liminal-hq/.github`](https://github.com/liminal-hq/.github); CI pins `ci-rust` by digest. Dependabot is off.
 - **The gate:** `make check` before every commit; `make check-fast` is fmt, clippy, tests and headers.
 - **Scratch:** small, short-lived files in `/tmp`; large ones (frames, videos, guest images) in `~/.cache/afterglow-savers/`. Previews worth keeping go to `~/Documents/Liminal HQ/Afterglow Savers/`.
 - **Guests:** Wine and QEMU run on their own Xvfb or headless, with no host desktop capture or key injection. Kill only a PID you started; never `pkill` by name.
@@ -92,6 +104,7 @@ Use `#` comments for shell, Python, TOML and Makefiles, and an XML comment for S
 - `make check` — the gate; `make check-fast` — fmt, clippy, tests, headers
 - `cargo run -p savers-preview --release -- --help` — render any scene to PNG frames, a contact sheet, a GIF or an MP4, and time the quality ladder
 - `make check-gpu` — the Linux edition on its own Xvfb with lavapipe (needs Xvfb, `import`, `xdotool`); never against the desktop session, and `WAYLAND_DISPLAY` is cleared
+- `bash scripts/check-banner.sh --shots /tmp/shots` — the hero banner; look at the frames
 - `bash scripts/smoke-wine.sh` — the `.scr` files under Wine on their own Xvfb
 - `docker run --rm -v "$PWD:/workdir" davidanson/markdownlint-cli2:v0.17.2 "**/*.md"` — markdown
 
@@ -107,10 +120,11 @@ State exactly what was and was not run when reporting results. [`docs/testing.md
 
 ```text
 README.md SPEC.md AGENTS.md CLAUDE.md LICENSE-APACHE LICENSE-MIT Makefile Cargo.toml
+.github/       CI workflow, pull request and issue templates, release note categories
 crates/        savers-core (the renderer, scenes and settings), savers-gpu (the wgpu Twilight) and savers-preview (host-only previews, never shipped)
 platforms/     win32: the .scr shells for i586 and x86_64, their own workspace; linux: the fullscreen GPU saver, xscreensaver hack and installer (docs/linux-edition.md)
 art/           SVG masters for the icons and the scripts that render them
 assets/        hero banner
 docs/          decisions, scenes, art, testing, ReactOS notes, landing, progress
-scripts/       header check, sizes, reproducibility, Wine smoke, guest tools
+scripts/       header and banner checks, sizes, reproducibility, Wine smoke, guest tools
 ```
