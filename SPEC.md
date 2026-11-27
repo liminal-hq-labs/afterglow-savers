@@ -13,7 +13,7 @@ The source of truth for what the savers do. Why each choice was made is in [docs
 | `AGCOLLCT.SCR` | Afterglow Collection | `Collection` | The four in turn, with cross-fades |
 | `AGQUILL.SCR` | Quill Ghostwriter | `Ghostwriter` | An Easter egg: a document that writes itself (not installed by default) |
 
-Each file is a Win32 GUI program (subsystem 4.0) for a Pentium (`i586`, x87 floats, no MMX or SSE) or for x86-64, with no C runtime, and carries string 1, an icon (resource 101) and version information. Each is at most 192 KiB; the five main files together at most 640 KiB (SAV-D14). They belong in the system folder (`C:\ReactOS\system32`, `C:\Windows\System32`, or `C:\Windows\System` on Windows 9x) or beside the Display applet.
+Each file is a Win32 GUI program (subsystem 4.0) for a Pentium (`i586`, x87 floats, no MMX or SSE) or for x86-64, with no C runtime, and carries string 1, an icon (resource 101) and version information. Each is at most 384 KiB, and the five main files together at most 1.5 MiB (SAV-D29): a guard against a bloated build, not a target; the files are built for speed. They belong in the system folder (`C:\ReactOS\system32`, `C:\Windows\System32`, or `C:\Windows\System` on Windows 9x) or beside the Display applet.
 
 ## 2. The command line
 
@@ -93,7 +93,7 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 | Cracktro | `Parts` | Bit mask of the parts: 1 copper, 2 plasma, 4 rotozoomer, 8 tunnel, 16 vector bars | 1–31 | 31 |
 | Cracktro | `Shuffle` | Shuffle the parts | 0–1 | 0 |
 | Collection | `Duration` | Seconds per saver | 30–600 | 90 |
-| Collection | `Savers` | Bit mask: 1 Ink, 2 Twilight, 4 Cracktro, 8 Maze, 16 Quill Ghostwriter | 1–31 | 15 |
+| Collection | `Savers` | Bit mask: 1 Ink, 2 Twilight, 4 Cracktro, 8 Maze, 16 Quill Ghostwriter (played only where `AGQUILL.SCR` is installed beside the Collection; otherwise that turn is Ink's) | 1–31 | 15 |
 | Collection | `Shuffle` | Shuffle the order | 0–1 | 0 |
 | Ghostwriter | `TextBank` (`REG_SZ`) | The lines it types, one per line; empty means the built-in bank | | |
 | Ghostwriter | `Acts` | Bit mask of the six acts | 1–63 | 63 |
@@ -116,4 +116,4 @@ A modal dialog, "Afterglow Maze Settings" (the saver's name, then "Settings", wi
 
 ## 10. Quill Ghostwriter
 
-An Easter egg (SAV-D20, SAV-D22): a real `.scr` that appears in the Screen Saver list as "Quill Ghostwriter" wherever it is installed, but it is never selected by default, and the Collection plays it only when its `Savers` mask asks. It ships only with the Quill remix of the ReactOS image and as an optional, unselected component of Quill's own installers, never in the Afterglow recipes, so its crate and file stay separate. Its scene is in [docs/scenes.md](docs/scenes.md#quill-ghostwriter-an-easter-egg). Its own budget is 192 KiB, outside the five main files' 640 KiB.
+An Easter egg (SAV-D20, SAV-D22): a real `.scr` that appears in the Screen Saver list as "Quill Ghostwriter" wherever it is installed, but it is never selected by default, and the Collection plays it only when its `Savers` mask asks. It ships only with the Quill remix of the ReactOS image and as an optional, unselected component of Quill's own installers, never in the Afterglow recipes, so its crate and file stay separate. Its scene is in [docs/scenes.md](docs/scenes.md#quill-ghostwriter-an-easter-egg). Its own budget is 384 KiB, outside the five main files' 1.5 MiB.

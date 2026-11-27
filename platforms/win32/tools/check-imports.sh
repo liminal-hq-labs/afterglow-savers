@@ -17,8 +17,10 @@ objdump="$(find_objdump)"
 fail() { echo "FAIL check-imports: $*" >&2; exit 1; }
 
 got="$("$objdump" -p "$exe" | awk '/DLL Name:/ {dll=tolower($3)} /^ +[0-9]+ +[A-Za-z_]/ {print dll "!" $2}' | sort -u)"
-# A line ending in `64` is for the 64-bit build only, one ending in `32` for the Pentium build only.
-allow="$(grep -v '^#' "$here/../imports.allow" | grep -v '^$' | { if [ "$arch" = i586 ]; then grep -v ' 64$'; else grep -v ' 32$'; fi; } | awk '{print $1}' | sort -u)"
+# A line ending in `64` is for the 64-bit build only, one ending in `32` for the Pentium build only, and one ending in `collection`
+# for AGCOLLCT.SCR only.
+collection() { if [ "$(basename "$exe" | tr '[:lower:]' '[:upper:]')" = AGCOLLCT.SCR ]; then cat; else grep -v ' collection$'; fi; }
+allow="$(grep -v '^#' "$here/../imports.allow" | grep -v '^$' | { if [ "$arch" = i586 ]; then grep -v ' 64$'; else grep -v ' 32$'; fi; } | collection | awk '{print $1}' | sort -u)"
 [ -n "$got" ] || fail "no imports found (is $exe a PE file?)"
 
 lower() { tr '[:upper:]' '[:lower:]'; }

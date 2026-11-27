@@ -48,6 +48,30 @@ pub fn member_settings() -> alloc::vec::Vec<savers_core::settings::Settings> {
 		.collect()
 }
 
+/// Whether a file of this name sits in the same folder as this program (the Collection asks for `AGQUILL.SCR`, SAV-D29).
+#[cfg(all(windows, not(test)))]
+pub fn installed_beside(name: &str) -> bool {
+	let mut path = [0u8; 300];
+	// SAFETY: the buffer and its length; a null module handle names this program.
+	let len = unsafe { sys::GetModuleFileNameA(core::ptr::null_mut(), path.as_mut_ptr(), (path.len() - 20) as u32) } as usize;
+	if len == 0 || len >= path.len() - 20 {
+		return false;
+	}
+	let folder = path[..len]
+		.iter()
+		.rposition(|&b| b == b'\\' || b == b'/')
+		.map_or(0, |i| i + 1);
+	let end = folder + name.len();
+	if end + 1 > path.len() {
+		return false;
+	}
+	path[folder..end].copy_from_slice(name.as_bytes());
+	path[end] = 0;
+	// SAFETY: a NUL-terminated path.
+	let attributes = unsafe { sys::GetFileAttributesA(path.as_ptr()) };
+	attributes != u32::MAX && attributes & 0x10 == 0
+}
+
 /// The entry point of a `.scr` program: runs the saver and exits with its code. `$kind` is its `SaverKind`, `$make` its scene maker.
 #[cfg(all(windows, not(test)))]
 #[macro_export]

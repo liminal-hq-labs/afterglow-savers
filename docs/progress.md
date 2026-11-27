@@ -32,6 +32,20 @@ The Win32 shell is built with `opt-level = "s"`: at `2` the Collection is 204 Ki
 
 The 25% Low floor (15 fps on a Pentium III) holds with room for every saver. 100% Ultra on one host core: 41 to 218 fps at 800 × 600; at 1280 × 720 Ink drops to about 27 fps, so rendering bands on several threads in the x86_64 build remains a later improvement. The Twilight 4K video took 752 s for 2,701 frames (0.28 s a frame at 3840 × 2160, Ultra).
 
+**Win32 sizes** at `opt-level = 3` (SAV-D29), in bytes:
+
+| File | i586 | x86_64 |
+| --- | --- | --- |
+| `AGCOLLCT.SCR` (all five scenes) | 295,424 | 328,192 |
+| `AGMAZE.SCR` | 114,688 | 129,536 |
+| `AGCRACK.SCR` | 108,544 | 125,440 |
+| `AGTWILIT.SCR` | 110,080 | 121,344 |
+| `AGINK.SCR` | 90,624 | 106,496 |
+| `AGQUILL.SCR` | 129,536 | 155,136 |
+| The five main files | 719,360 | 811,008 |
+
+Against `opt-level = 2` on the host bench, `3` makes Ink at 100% Ultra about 25% faster (29.6 to 22.7 ms at 800 × 600) and leaves Twilight and Maze within noise.
+
 ## Open questions for the owner
 
 - Quill Ghostwriter could be started from Quill's About box (a click on the nib); that is Quill's to decide.

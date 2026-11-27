@@ -13,7 +13,7 @@ Afterglow Screensavers is a Liminal HQ Labs experiment: Afterglow Maze, Cracktro
 - **Git.** Local only, no remote: never push. Land straight onto `main` after `make check`; parallel builders use worktrees under `~/source/worktrees/afterglow-savers/<topic>` and fast-forward. Never `git add -A` or `git commit -a`.
 - **Formatting.** Tabs everywhere except YAML. rustfmt with hard tabs.
 - **Headers.** SPDX header on every source, script, TOML and SVG file: summary line, blank, "(c) Copyright 2026 Liminal HQ, Scott Morris", `SPDX-License-Identifier: Apache-2.0 OR MIT`.
-- **Architecture.** `savers-core` is `no_std` + `alloc`, no libm, fixed point in inner loops, procedural textures, deterministic for a seed and a time. The Win32 shell has no C runtime, ANSI imports on `imports.allow`, x87 floats and no MMX or SSE on i586. Budgets: 192 KiB per `.scr`, 640 KiB for all five. Byte-identical builds in any directory.
+- **Architecture.** `savers-core` is `no_std` + `alloc`, no libm, fixed point in inner loops, procedural textures, deterministic for a seed and a time. The Win32 shell has no C runtime, ANSI imports on `imports.allow`, x87 floats and no MMX or SSE on i586. Built for speed; a guard of 384 KiB per `.scr`, 1.5 MiB for all five (SAV-D29). Byte-identical builds in any directory.
 - **Machines.** `CARGO_BUILD_JOBS=4`, one heavy tool at a time, large scratch in `~/.cache/afterglow-savers`, Wine and QEMU headless on their own displays, kill only your own PIDs.
 
 ## Commands

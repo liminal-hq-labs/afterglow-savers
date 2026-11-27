@@ -95,8 +95,8 @@ all = { level = "deny", priority = -1 }
 
 [profile.release]
 panic = "abort"
-# Size over speed: with `3` or `2` the Collection and the x86-64 set pass the budgets of SAV-D14 only barely or not at all.
-opt-level = "s"
+# Speed, as the host build the frame times are measured with: the owner prefers frame rate to file size (SAV-D29).
+opt-level = 3
 lto = true
 codegen-units = 1
 strip = true

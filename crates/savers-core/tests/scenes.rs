@@ -166,3 +166,21 @@ fn the_maze_loops_through_its_portal() {
 		"the crossing changes {seam:.2} levels a pixel, an ordinary step {walk:.2}"
 	);
 }
+
+/// Every seed makes a walkable maze: none hangs, panics or paints a blank frame at the start, for each maze size.
+#[test]
+fn many_mazes_start_and_paint() {
+	for seed in 0..300u32 {
+		let mut s = Settings::defaults(SaverKind::Maze);
+		s.set(Key::RenderScale, 100);
+		s.set(Key::Grain, 0);
+		s.set(Key::MazeSize, [8, 14, 20, 32][(seed % 4) as usize]);
+		let (rw, rh) = render_size(&s, 64, 36, false);
+		let scene = build(SaverKind::Maze, &s, seed, rw, rh);
+		let mut sv = Saver::new(s, scene, 64, 36, false);
+		sv.at(0.0);
+		let f = sv.at(1.5);
+		let mean = f.px.iter().map(|&c| luma(c) as u64).sum::<u64>() / f.px.len() as u64;
+		assert!(mean > 3, "seed {seed}: the first frames are blank (mean luma {mean})");
+	}
+}

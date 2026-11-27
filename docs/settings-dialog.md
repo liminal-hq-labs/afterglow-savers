@@ -42,7 +42,7 @@ A modal dialog built at run time from a `DLGTEMPLATE` in memory, generated from 
 
 ## Size
 
-The scene is already in every `.scr`, so the preview and banner cost only the glue: the owner-drawn swatches, the banner composition, the timer and the rebuild logic, estimated at 8 to 14 KiB per file in the i586 build (the v1 dialog generator stays, as the fallback, about 6 KiB). Against the 192 KiB budget, a scene with its shell is expected at 60 to 110 KiB, so the room is there; `check-sizes.sh` holds the line.
+The scene is already in every `.scr`, so the preview and banner cost only the glue: the owner-drawn swatches, the banner composition, the timer and the rebuild logic, estimated at 8 to 14 KiB per file in the i586 build (the v1 dialog generator stays, as the fallback, about 6 KiB). The files are built for speed with a 384 KiB guard per file (SAV-D29); a scene with its shell is 90 to 130 KiB at i586, so there is ample room.
 
 ## Work packages
 

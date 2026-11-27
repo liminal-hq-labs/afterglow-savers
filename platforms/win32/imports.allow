@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 # A trailing `32` marks a function only the Pentium build imports, a trailing `64` one only the x86-64 build imports (the window-long
-# calls are named differently there). Checked by hand against the Win32 reference's "Windows 95" column. No wide-character (...W) entry points.
+# calls are named differently there), and a trailing `collection` one only AGCOLLCT.SCR imports (it looks for AGQUILL.SCR beside itself,
+# SAV-D29). Checked by hand against the Win32 reference's "Windows 95" column. No wide-character (...W) entry points.
 advapi32.dll!RegCloseKey
 advapi32.dll!RegCreateKeyExA
 advapi32.dll!RegOpenKeyExA
@@ -16,6 +17,8 @@ gdi32.dll!SetStretchBltMode
 gdi32.dll!StretchDIBits
 kernel32.dll!ExitProcess
 kernel32.dll!GetCommandLineA
+kernel32.dll!GetFileAttributesA collection
+kernel32.dll!GetModuleFileNameA collection
 kernel32.dll!GetModuleHandleA
 kernel32.dll!GetProcessHeap
 kernel32.dll!GetTickCount

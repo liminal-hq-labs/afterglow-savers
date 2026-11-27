@@ -62,7 +62,7 @@ These are exactly the values the Display applet writes (docs/reactos-scr.md, "Ap
 
 ## The compact recipe
 
-The `base` trim profile removes ReactOS's own eight `.scr` files (`profiles/base.txt`), and the compact recipe inherits the base recipe's `[[files]]`, so it would get the Afterglow savers unless it removes them. The five main files are at most 640 KiB together (SAV-D14), so the recommendation is to keep them in the compact image, where they are its only screensavers. If the compact image should have none, add a trim extra to `afterglow-compact.toml` with `f ReactOS/system32/AG*.SCR` lines (one per file; the trim takes no wildcards) and drop `screensaver-afterglow` from its `reg_files`.
+The `base` trim profile removes ReactOS's own eight `.scr` files (`profiles/base.txt`), and the compact recipe inherits the base recipe's `[[files]]`, so it would get the Afterglow savers unless it removes them. The five main files are about 720 KB together at i586 (SAV-D29), so the recommendation is to keep them in the compact image, where they are its only screensavers. If the compact image should have none, add a trim extra to `afterglow-compact.toml` with `f ReactOS/system32/AG*.SCR` lines (one per file; the trim takes no wildcards) and drop `screensaver-afterglow` from its `reg_files`.
 
 ## Quill's recipe
 

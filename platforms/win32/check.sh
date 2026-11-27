@@ -14,9 +14,10 @@ case "$arch" in
 i586 | x86_64) ;;
 *) echo "usage: check.sh [i586|x86_64] [directory]" >&2; exit 2 ;;
 esac
-# SAV-D14: 192 KiB each, 640 KiB for the five main files; AGQUILL (SAV-D20) has its own 192 KiB, outside the 640.
-each=196608
-all=655360
+# SAV-D14 as revised by SAV-D29: 384 KiB each and 1.5 MiB for the five main files, a guard against accidents rather than a target;
+# AGQUILL (SAV-D20) has its own 384 KiB, outside the five.
+each=393216
+all=1572864
 total=0
 for name in AGMAZE AGCRACK AGTWILIT AGINK AGCOLLCT AGQUILL; do
 	scr="$dir/$name.SCR"

@@ -84,7 +84,7 @@ Use `#` comments for shell, Python, TOML and Makefiles, and an XML comment for S
 - **No libm.** `sin`, `cos`, `sqrt`, `exp` and noise are the core's own, deterministic and fast; inner loops are fixed point. The Pentium build uses x87 floats and no MMX or SSE.
 - **Procedural art.** Textures, fonts and planets are generated at startup from a seed. No bitmap bigger than an icon is embedded.
 - **Vector masters.** Every icon and the hero are SVG masters in `art/`, rendered down by script; generated files are never edited by hand.
-- **Budgets.** Each `.scr` at most 192 KiB and all five at most 640 KiB, checked by `make check`. Builds are byte-identical in any directory.
+- **Budgets.** Built for speed; each `.scr` at most 384 KiB and all five at most 1.5 MiB as a guard against accidents (SAV-D29), checked by `make check`. Builds are byte-identical in any directory.
 - **SPEC first.** A change to behaviour, settings or defaults updates `SPEC.md` in the same change.
 
 ## Testing

@@ -13,7 +13,7 @@ How Quill's installers (built by liminal-installer from Quill's `installer/` pro
 - The Windows 95 installer offers both, so someone can try the old-school and the new-school saver side by side; each is listed in Display Properties by its own description, "Quill Ghostwriter" (the 3.x edition carries "Windows 3.x edition" in its description when the two would otherwise look the same; SAV-D23).
 - Neither installer selects Ghostwriter as the active screensaver: no `SCRNSAVE.EXE` in `SYSTEM.INI` (Windows 3.x and 9x) or `HKCU\Control Panel\Desktop` (NT). It sits in the list for people to find.
 - Settings need nothing at install time: the Win32 edition reads `HKCU\Software\Liminal HQ\Afterglow Screensavers\Ghostwriter` and the Win16 one `CONTROL.INI` `[Screen Saver.Quill Ghostwriter]`, each with defaults in the program.
-- **Sizes:** each `.scr` is at most 192 KiB (SAV-D14); the measured sizes go here once both editions are built. The Win16 edition is expected well under 64 KiB, so the Windows 3.x floppy has room.
+- **Sizes:** the Win32 `AGQUILL.SCR` is about 127 KiB (i586, built for speed; the guard is 384 KiB, SAV-D29); the Win16 edition's size goes here once it is built. The Win16 edition is expected well under 64 KiB, so the Windows 3.x floppy has room.
 
 ## What liminal-installer needs
 

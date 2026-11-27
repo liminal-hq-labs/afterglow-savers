@@ -188,6 +188,8 @@ unsafe extern "system" {
 	pub fn ExitProcess(code: u32) -> !;
 	pub fn GetCommandLineA() -> *const u8;
 	pub fn GetModuleHandleA(name: *const u8) -> Handle;
+	pub fn GetModuleFileNameA(module: Handle, name: *mut u8, size: u32) -> u32;
+	pub fn GetFileAttributesA(name: *const u8) -> u32;
 	pub fn GetTickCount() -> u32;
 	pub fn QueryPerformanceCounter(count: *mut i64) -> i32;
 	pub fn QueryPerformanceFrequency(frequency: *mut i64) -> i32;
