@@ -11,7 +11,7 @@ The resumable log of where the work stands. Newest state first; each phase lists
 - **P4** the ReactOS integration plan: done (`docs/reactos-integration.md`); the Quill installer plan too (`docs/quill-installer-integration.md`).
 - **P5** Quill Ghostwriter: the scene and `AGQUILL.SCR` are done; the Windows 3.x edition `QUILLGW.SCR` (SAV-D23) is WP-win16, queued for a builder.
 - **P6** Twilight on the graphics card (SAV-D25, `docs/gpu-twilight.md`): WP-gpu-share and WP-gpu-render are done (`crates/savers-gpu`, SAV-D32 and SAV-D33: a headless renderer held to the CPU frames, `savers-gpu-preview` for frames, comparisons and timings); WP-gpu-linux (the fullscreen binary and the xscreensaver hack) is next.
-- **P7** the Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after WP-win32: three work packages.
+- **P7** the Afterglow settings dialog (SAV-D26, `docs/settings-dialog.md`), after WP-win32: three work packages. The shell package is done (SAV-D39, SAV-D40): banner, swatches, live preview, fallback, Wine checks; placeholder banner moments await the art package, and the check package is next.
 
 Builder queue (the orchestrator's order): WP-art, WP-gpu-share, WP-win16, then the dialog v2 packages.
 

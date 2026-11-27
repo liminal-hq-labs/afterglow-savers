@@ -6,10 +6,12 @@
 
 use alloc::vec;
 
-use savers_core::settings::{Control, SaverKind, Settings, fields, text_field};
+use savers_core::settings::{Control, Key, SaverKind, Settings, fields, text_field};
 
 use crate::ansi::{from_edit, number_text, parse_number, to_ansi, to_edit};
+use crate::dialog_v2::{chosen_swatch, select_swatch};
 use crate::registry::RegStore;
+use crate::saver::MakeScene;
 use crate::sys::{self, Handle};
 use crate::template::{self, DEFAULTS_ID, TEXT_ID, field_id, mask_id};
 
@@ -18,12 +20,12 @@ struct DialogState {
 	settings: Settings,
 }
 
-fn item(dialog: Handle, id: u16) -> Handle {
+pub(crate) fn item(dialog: Handle, id: u16) -> Handle {
 	// SAFETY: any window handle and identifier are accepted; a missing control gives null.
 	unsafe { sys::GetDlgItem(dialog, i32::from(id)) }
 }
 
-fn send(window: Handle, message: u32, wparam: usize, lparam: isize) -> isize {
+pub(crate) fn send(window: Handle, message: u32, wparam: usize, lparam: isize) -> isize {
 	if window.is_null() {
 		return 0;
 	}
@@ -32,7 +34,7 @@ fn send(window: Handle, message: u32, wparam: usize, lparam: isize) -> isize {
 }
 
 /// Adds a combo box's choices and a trackbar's range: what only has to happen once.
-fn prepare(dialog: Handle, kind: SaverKind) {
+pub(crate) fn prepare(dialog: Handle, kind: SaverKind) {
 	for (index, field) in fields(kind).enumerate() {
 		let control = item(dialog, field_id(index));
 		match field.control {
@@ -53,7 +55,7 @@ fn prepare(dialog: Handle, kind: SaverKind) {
 }
 
 /// Puts a set of values in the controls.
-fn show(dialog: Handle, settings: &Settings) {
+pub(crate) fn show(dialog: Handle, settings: &Settings) {
 	let kind = settings.kind;
 	for (index, field) in fields(kind).enumerate() {
 		let value = settings.get(field.key);
@@ -61,7 +63,10 @@ fn show(dialog: Handle, settings: &Settings) {
 		match field.control {
 			Control::Choice(options) => {
 				let at = options.iter().position(|&(_, v)| v == value).unwrap_or(0);
-				send(item(dialog, id), sys::CB_SETCURSEL, at, 0);
+				// The Afterglow dialog shows the palette as swatches; the plain one, and every other choice, as a combo box.
+				if field.key != Key::Palette || !select_swatch(dialog, index, options.len(), at) {
+					send(item(dialog, id), sys::CB_SETCURSEL, at, 0);
+				}
 			}
 			Control::Slider => {
 				send(item(dialog, id), sys::TBM_SETPOS, 1, value as isize);
@@ -88,13 +93,18 @@ fn show(dialog: Handle, settings: &Settings) {
 }
 
 /// Reads the controls back into the settings; a value a field does not allow becomes its default.
-fn collect(dialog: Handle, settings: &mut Settings) {
+pub(crate) fn collect(dialog: Handle, settings: &mut Settings) {
 	let kind = settings.kind;
 	for (index, field) in fields(kind).enumerate() {
 		let id = field_id(index);
 		let value = match field.control {
 			Control::Choice(options) => {
-				let at = send(item(dialog, id), sys::CB_GETCURSEL, 0, 0);
+				let swatch = if field.key == Key::Palette {
+					chosen_swatch(dialog, index, options.len())
+				} else {
+					None
+				};
+				let at = swatch.map_or_else(|| send(item(dialog, id), sys::CB_GETCURSEL, 0, 0), |n| n as isize);
 				usize::try_from(at)
 					.ok()
 					.and_then(|at| options.get(at))
@@ -167,8 +177,17 @@ unsafe extern "system" fn dialog_proc(dialog: Handle, message: u32, wparam: usiz
 	}
 }
 
-/// Runs the dialog to the end, owned by `owner` (which may be null).
-pub fn show_settings(kind: SaverKind, owner: Handle) {
+/// Runs the settings dialog to the end, owned by `owner` (which may be null): the Afterglow one, or the plain one when the Afterglow
+/// one is not wanted (high contrast, a display of 256 colours or fewer, `PlainDialog` set in the saver's key) or cannot be made.
+pub fn show_settings(kind: SaverKind, owner: Handle, make: MakeScene) {
+	if crate::dialog_v2::wanted(kind) && crate::dialog_v2::show_afterglow(kind, owner, make) {
+		return;
+	}
+	show_plain(kind, owner);
+}
+
+/// The plain dialog: the table-generated template with standard controls.
+fn show_plain(kind: SaverKind, owner: Handle) {
 	let mut state = DialogState {
 		kind,
 		settings: Settings::load(kind, &RegStore::open(kind)),

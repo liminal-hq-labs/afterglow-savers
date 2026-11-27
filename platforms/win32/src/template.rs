@@ -29,31 +29,31 @@ pub fn mask_id(index: usize, bit: usize) -> u16 {
 }
 
 // Dialog and control styles.
-const WS_POPUP: u32 = 0x8000_0000;
+pub(crate) const WS_POPUP: u32 = 0x8000_0000;
 const WS_CHILD: u32 = 0x4000_0000;
 const WS_VISIBLE: u32 = 0x1000_0000;
-const WS_CAPTION: u32 = 0x00C0_0000;
-const WS_BORDER: u32 = 0x0080_0000;
-const WS_SYSMENU: u32 = 0x0008_0000;
-const WS_VSCROLL: u32 = 0x0020_0000;
-const WS_TABSTOP: u32 = 0x0001_0000;
-const WS_GROUP: u32 = 0x0002_0000;
-const DS_SETFONT: u32 = 0x0040;
-const DS_MODALFRAME: u32 = 0x0080;
-const DS_CENTER: u32 = 0x0800;
-const BS_PUSHBUTTON: u32 = 0;
-const BS_DEFPUSHBUTTON: u32 = 1;
+pub(crate) const WS_CAPTION: u32 = 0x00C0_0000;
+pub(crate) const WS_BORDER: u32 = 0x0080_0000;
+pub(crate) const WS_SYSMENU: u32 = 0x0008_0000;
+pub(crate) const WS_VSCROLL: u32 = 0x0020_0000;
+pub(crate) const WS_TABSTOP: u32 = 0x0001_0000;
+pub(crate) const WS_GROUP: u32 = 0x0002_0000;
+pub(crate) const DS_SETFONT: u32 = 0x0040;
+pub(crate) const DS_MODALFRAME: u32 = 0x0080;
+pub(crate) const DS_CENTER: u32 = 0x0800;
+pub(crate) const BS_PUSHBUTTON: u32 = 0;
+pub(crate) const BS_DEFPUSHBUTTON: u32 = 1;
 const BS_AUTOCHECKBOX: u32 = 3;
-const ES_MULTILINE: u32 = 0x0004;
-const ES_AUTOVSCROLL: u32 = 0x0040;
-const ES_AUTOHSCROLL: u32 = 0x0080;
-const ES_WANTRETURN: u32 = 0x1000;
-const ES_NUMBER: u32 = 0x2000;
+pub(crate) const ES_MULTILINE: u32 = 0x0004;
+pub(crate) const ES_AUTOVSCROLL: u32 = 0x0040;
+pub(crate) const ES_AUTOHSCROLL: u32 = 0x0080;
+pub(crate) const ES_WANTRETURN: u32 = 0x1000;
+pub(crate) const ES_NUMBER: u32 = 0x2000;
 const CBS_DROPDOWNLIST: u32 = 3;
 const TBS_NOTICKS: u32 = 0x0010;
 
 #[derive(Clone, Copy)]
-enum Class {
+pub(crate) enum Class {
 	Button,
 	Edit,
 	Static,
@@ -63,41 +63,43 @@ enum Class {
 
 const GROUP_BOX: u32 = 7;
 
-const MARGIN: i16 = 8;
-const GAP: i16 = 8;
+pub(crate) const MARGIN: i16 = 8;
+pub(crate) const GAP: i16 = 8;
 /// A group box's inner padding and the height of its title line.
-const PAD: i16 = 6;
+pub(crate) const PAD: i16 = 6;
 const GROUP_TOP: i16 = 12;
 const GROUP_BOTTOM: i16 = 4;
 /// Every one-line row is this tall; a label that needs two lines makes its row one line taller.
-const ROW: i16 = 14;
-const LINE: i16 = 8;
-const HEIGHT: i16 = 12;
-const BUTTON_WIDTH: i16 = 50;
+pub(crate) const ROW: i16 = 14;
+pub(crate) const LINE: i16 = 8;
+pub(crate) const HEIGHT: i16 = 12;
+pub(crate) const BUTTON_WIDTH: i16 = 50;
 /// The two groups above the scene's own, and the scene's one, are laid out in these widths (dialog units).
-const HALF: i16 = 176;
-const FULL: i16 = HALF * 2 + GAP;
+pub(crate) const HALF: i16 = 176;
+pub(crate) const FULL: i16 = HALF * 2 + GAP;
 /// How wide a character of the dialog font is, with margin for capitals and for larger fonts, so a label is never clipped.
 const CHAR_WIDTH_TENTHS: i32 = 46;
 
-struct Builder {
-	bytes: Vec<u8>,
-	items: u16,
-	ids: Vec<u16>,
+pub(crate) struct Builder {
+	pub(crate) bytes: Vec<u8>,
+	pub(crate) items: u16,
+	pub(crate) ids: Vec<u16>,
 	/// The letters already taken as mnemonics, one bit per letter or digit.
-	taken: u64,
+	pub(crate) taken: u64,
+	/// Whether the next control starts a new group (`WS_GROUP`).
+	pub(crate) next_group: bool,
 }
 
 impl Builder {
-	fn u16(&mut self, v: u16) {
+	pub(crate) fn u16(&mut self, v: u16) {
 		self.bytes.extend_from_slice(&v.to_le_bytes());
 	}
 
-	fn u32(&mut self, v: u32) {
+	pub(crate) fn u32(&mut self, v: u32) {
 		self.bytes.extend_from_slice(&v.to_le_bytes());
 	}
 
-	fn wide(&mut self, text: &str) {
+	pub(crate) fn wide(&mut self, text: &str) {
 		for c in text.chars() {
 			let mut buffer = [0u16; 2];
 			for unit in c.encode_utf16(&mut buffer) {
@@ -107,6 +109,32 @@ impl Builder {
 		self.u16(0);
 	}
 
+	/// The `DLGTEMPLATE` header: a modal, centred, captioned dialog in 8 point MS Sans Serif; the item count is patched in at the end.
+	pub(crate) fn dialog_header(&mut self, kind: SaverKind, width: i16, height: i16) {
+		self.u32(WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_MODALFRAME | DS_SETFONT | DS_CENTER);
+		self.u32(0);
+		self.u16(0);
+		for v in [0, 0, width, height] {
+			self.u16(v as u16);
+		}
+		self.u16(0); // no menu
+		self.u16(0); // the default dialog class
+		self.wide(&title(kind));
+		self.u16(8);
+		self.wide("MS Sans Serif");
+	}
+
+	/// Writes the item count into the header and returns the finished template.
+	pub(crate) fn finish(mut self) -> Template {
+		let count = self.items.to_le_bytes();
+		self.bytes[8] = count[0];
+		self.bytes[9] = count[1];
+		Template {
+			bytes: self.bytes,
+			ids: self.ids,
+		}
+	}
+
 	fn align(&mut self) {
 		while !self.bytes.len().is_multiple_of(4) {
 			self.bytes.push(0);
@@ -114,9 +142,10 @@ impl Builder {
 	}
 
 	#[allow(clippy::too_many_arguments)]
-	fn item(&mut self, class: Class, style: u32, text: &str, id: u16, x: i16, y: i16, w: i16, h: i16) {
+	pub(crate) fn item(&mut self, class: Class, style: u32, text: &str, id: u16, x: i16, y: i16, w: i16, h: i16) {
 		self.align();
-		self.u32(WS_CHILD | WS_VISIBLE | style);
+		let group = if core::mem::take(&mut self.next_group) { WS_GROUP } else { 0 };
+		self.u32(WS_CHILD | WS_VISIBLE | group | style);
 		self.u32(0);
 		for v in [x, y, w, h] {
 			self.u16(v as u16);
@@ -144,7 +173,7 @@ impl Builder {
 	}
 
 	/// The label with an `&` before the first letter of it nobody has used yet, preferring the first letter of a word.
-	fn mnemonic(&mut self, label: &str) -> String {
+	pub(crate) fn mnemonic(&mut self, label: &str) -> String {
 		let bit = |c: char| c.to_ascii_lowercase().to_digit(36).map(|d| 1u64 << d);
 		let mut previous = ' ';
 		let mut choice = None;
@@ -176,7 +205,7 @@ impl Builder {
 		}
 	}
 
-	fn label(&mut self, text: &str, x: i16, y: i16, w: i16) {
+	pub(crate) fn label(&mut self, text: &str, x: i16, y: i16, w: i16) {
 		let lines = lines_for(text, w);
 		let text = self.mnemonic(text);
 		self.item(Class::Static, 0, &text, 0xFFFF, x, y + 2, w, LINE * lines);
@@ -222,7 +251,7 @@ fn columns(inner: i16) -> (i16, i16) {
 }
 
 /// The height of one field in a column of the given inner width.
-fn field_height(field: &Field, inner: i16) -> i16 {
+pub(crate) fn field_height(field: &Field, inner: i16) -> i16 {
 	let (label, _) = columns(inner);
 	match field.control {
 		Control::Mask(bits) => ROW * (1 + (bits.len() as i16 + 1) / 2),
@@ -232,7 +261,7 @@ fn field_height(field: &Field, inner: i16) -> i16 {
 }
 
 /// Which group a setting belongs to: 0 Look, 1 Quality, 2 Finish, 3 the scene's own.
-fn section(key: Key) -> u8 {
+pub(crate) fn section(key: Key) -> u8 {
 	match key {
 		Key::Sound | Key::Volume | Key::Palette | Key::Light | Key::Speed => 0,
 		Key::RenderScale | Key::Detail | Key::MaxFps => 1,
@@ -260,7 +289,7 @@ fn split_columns(fields: &[(usize, Field)], inner: i16) -> usize {
 }
 
 /// The height of a run of fields.
-fn run_height(fields: &[(usize, Field)], inner: i16) -> i16 {
+pub(crate) fn run_height(fields: &[(usize, Field)], inner: i16) -> i16 {
 	fields.iter().map(|(_, f)| field_height(f, inner)).sum()
 }
 
@@ -278,7 +307,7 @@ pub fn title(kind: SaverKind) -> String {
 }
 
 /// Puts a run of fields in one column starting at (`x`, `y`), `inner` units wide. Returns nothing: heights come from `run_height`.
-fn place(b: &mut Builder, fields: &[(usize, Field)], x: i16, mut y: i16, inner: i16) {
+pub(crate) fn place(b: &mut Builder, fields: &[(usize, Field)], x: i16, mut y: i16, inner: i16) {
 	let (label_w, control_w) = columns(inner);
 	let control_x = x + label_w + 4;
 	for &(index, field) in fields {
@@ -390,21 +419,12 @@ pub fn build(kind: SaverKind) -> Template {
 		items: 0,
 		ids: Vec::new(),
 		taken: 0,
+		next_group: false,
 	};
 	// The Defaults button owns D.
 	b.taken |= 1u64 << 13;
 
-	b.u32(WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_MODALFRAME | DS_SETFONT | DS_CENTER);
-	b.u32(0);
-	b.u16(0); // the item count, patched below
-	for v in [0, 0, width, height] {
-		b.u16(v as u16);
-	}
-	b.u16(0); // no menu
-	b.u16(0); // the default dialog class
-	b.wide(&title(kind));
-	b.u16(8);
-	b.wide("MS Sans Serif");
+	b.dialog_header(kind, width, height);
 
 	// Left: Look, then Quality.
 	b.group("Look", MARGIN, MARGIN, HALF, look_h);
@@ -466,13 +486,7 @@ pub fn build(kind: SaverKind) -> Template {
 		HEIGHT + 2,
 	);
 
-	let count = b.items.to_le_bytes();
-	b.bytes[8] = count[0];
-	b.bytes[9] = count[1];
-	Template {
-		bytes: b.bytes,
-		ids: b.ids,
-	}
+	b.finish()
 }
 
 #[cfg(test)]

@@ -108,13 +108,32 @@ The Collection uses its own common settings for all four scenes, and each scene'
 
 ## 9. The settings dialog
 
-A modal dialog, "Afterglow Maze Settings" (the saver's name, then "Settings", with the saver's icon), built at run time from common controls ReactOS and Windows 95 both have (SAV-D9). Group boxes hold the controls, in this tab order, and every label has a mnemonic:
+A modal dialog, "Afterglow Maze Settings" (the saver's name, then "Settings", with the saver's icon), built at run time from common controls ReactOS and Windows 95 both have (SAV-D9). There are two editions of it: the Afterglow one, which is shown when it can be, and the plain one, which is the fallback (SAV-D26, SAV-D39). Both hold the same settings under the same control identifiers, read and write the registry the same way, and answer to the same keys:
+
+- **OK** (Enter) writes every value and ends; **Cancel** (Esc) writes nothing; **Defaults** (Alt+D) puts the defaults in the controls.
+- Every label has a mnemonic.
+
+### The Afterglow dialog
+
+A banner across the top (the saver's own scene rendered once, darkened towards the left under the saver's icon and name), then two columns. On the left, **Look** (palette as clickable swatches, light mode, speed), **Quality** (render scale, detail, frame cap) and **Finish** (bloom, streaks, vignette, grain, letterbox, fades); on the right, a **live preview** (the real scene at Low detail, 20 frames a second, following every change), the seed with a **New seed** button, and the scene's own settings with the text editor of the cracktro and Ghostwriter. When the right column would be the taller, Finish and Scene swap columns so the two are balanced.
+
+- The swatches are owner-drawn buttons whose window text is the palette's name. They are one tab stop (the chosen swatch); the arrow keys move between them and choose, and Space chooses. The chosen one is ringed in the palette's sun hue, with a hairline in the system's text colour so it shows on any ground.
+- A change to the palette, light mode, seed or a scene setting rebuilds the preview's scene; finish and speed changes reach the running one at once. The preview stops while the dialog is inactive and drops to 10 frames a second when a frame takes over 150 ms.
+- Group titles are drawn in the system's text colour and ruled in the palette's first glow hue (its deeper hue by day).
+- Text and controls use the system's colours and the dialog's font, so it reads under any theme, or none.
+
+### The plain dialog
+
+Group boxes hold the controls, in this tab order:
 
 - **Look** (top left): palette (combo box), light mode (check box), speed (trackbar).
 - **Quality** (left, under Look): render scale, detail and frame cap (combo boxes).
 - **Finish** (right): bloom, streaks, vignette and grain (trackbars), letterbox and fades (check boxes).
 - **Scene** (full width, below): the scene's own settings in two runs: trackbars, combo boxes, a seed edit box, the cracktro's part check boxes, the collection's duration and saver check boxes, and for the cracktro (and Ghostwriter) the multi-line text editor. A label too long for its column wraps onto a second line rather than clipping.
-- **OK** writes every value and ends; **Cancel** writes nothing; **Defaults** puts the defaults in the controls.
+
+### Which one is shown
+
+The plain dialog is shown instead of the Afterglow one when high contrast is on (`SPI_GETHIGHCONTRAST`), when the display has 256 colours or fewer, when the saver's registry key holds a `PlainDialog` value of 1, or when the Afterglow dialog cannot be created or set up (the template fails, or the banner or preview pane has no size).
 
 ## 10. Quill Ghostwriter
 

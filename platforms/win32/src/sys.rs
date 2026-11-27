@@ -35,6 +35,8 @@ pub const SM_YVIRTUALSCREEN: i32 = 77;
 pub const SM_CXVIRTUALSCREEN: i32 = 78;
 pub const SM_CYVIRTUALSCREEN: i32 = 79;
 pub const GWL_USERDATA: i32 = -21;
+pub const GWL_STYLE: i32 = -16;
+pub const GWL_WNDPROC: i32 = -4;
 pub const BLACK_BRUSH: i32 = 4;
 pub const PM_REMOVE: u32 = 1;
 pub const QS_ALLINPUT: u32 = 0x04FF;
@@ -50,6 +52,13 @@ pub const WM_CREATE: u32 = 0x0001;
 pub const WM_DESTROY: u32 = 0x0002;
 pub const WM_ACTIVATE: u32 = 0x0006;
 pub const WM_PAINT: u32 = 0x000F;
+pub const WM_SETFONT: u32 = 0x0030;
+pub const WM_GETFONT: u32 = 0x0031;
+pub const WM_DRAWITEM: u32 = 0x002B;
+pub const WM_GETDLGCODE: u32 = 0x0087;
+pub const WM_TIMER: u32 = 0x0113;
+pub const WM_HSCROLL: u32 = 0x0114;
+pub const WM_SETFOCUS: u32 = 0x0007;
 pub const WM_CLOSE: u32 = 0x0010;
 pub const WM_QUIT: u32 = 0x0012;
 pub const WM_ERASEBKGND: u32 = 0x0014;
@@ -86,6 +95,34 @@ pub const TBM_SETRANGE: u32 = WM_USER + 6;
 pub const WM_SETICON: u32 = 0x0080;
 /// The identifier of every saver's icon resource.
 pub const ICON_ID: usize = 101;
+pub const DLGC_WANTARROWS: isize = 0x0001;
+pub const DLGC_BUTTON: isize = 0x2000;
+pub const VK_LEFT: usize = 0x25;
+pub const VK_UP: usize = 0x26;
+pub const VK_RIGHT: usize = 0x27;
+pub const VK_DOWN: usize = 0x28;
+pub const BN_CLICKED: usize = 0;
+pub const ODS_SELECTED: u32 = 0x0001;
+pub const ODS_FOCUS: u32 = 0x0010;
+pub const COLOR_BTNFACE: i32 = 15;
+pub const COLOR_BTNTEXT: i32 = 18;
+pub const COLOR_BTNSHADOW: i32 = 16;
+pub const COLOR_WINDOWTEXT: i32 = 8;
+pub const TRANSPARENT: i32 = 1;
+pub const BITSPIXEL: i32 = 12;
+pub const PLANES: i32 = 14;
+pub const SPI_GETHIGHCONTRAST: u32 = 0x0042;
+pub const HCF_HIGHCONTRASTON: u32 = 1;
+pub const DT_LEFT: u32 = 0;
+pub const DT_BOTTOM: u32 = 8;
+pub const DT_TOP: u32 = 0;
+pub const DT_CENTER: u32 = 1;
+pub const DT_VCENTER: u32 = 4;
+pub const DT_SINGLELINE: u32 = 0x20;
+pub const DT_NOPREFIX: u32 = 0x800;
+pub const DT_END_ELLIPSIS: u32 = 0x8000;
+pub const FW_BOLD: i32 = 700;
+pub const DEFAULT_CHARSET: u32 = 1;
 pub const IDOK: usize = 1;
 pub const IDCANCEL: usize = 2;
 
@@ -125,6 +162,47 @@ pub struct WndClassA {
 	pub background: Handle,
 	pub menu_name: *const u8,
 	pub class_name: *const u8,
+}
+
+/// A font's description (`LOGFONTA`).
+#[repr(C)]
+pub struct LogFont {
+	pub height: i32,
+	pub width: i32,
+	pub escapement: i32,
+	pub orientation: i32,
+	pub weight: i32,
+	pub italic: u8,
+	pub underline: u8,
+	pub strike_out: u8,
+	pub char_set: u8,
+	pub out_precision: u8,
+	pub clip_precision: u8,
+	pub quality: u8,
+	pub pitch_and_family: u8,
+	pub face: [u8; 32],
+}
+
+/// The system's description of the high-contrast setting.
+#[repr(C)]
+pub struct HighContrast {
+	pub size: u32,
+	pub flags: u32,
+	pub default_scheme: *mut u8,
+}
+
+/// What a window sends its parent to have an owner-drawn control painted.
+#[repr(C)]
+pub struct DrawItemStruct {
+	pub control_type: u32,
+	pub control_id: u32,
+	pub item_id: u32,
+	pub item_action: u32,
+	pub item_state: u32,
+	pub window: Handle,
+	pub dc: Handle,
+	pub rect: Rect,
+	pub item_data: usize,
 }
 
 #[repr(C)]
@@ -282,6 +360,18 @@ unsafe extern "system" {
 		param: isize,
 	) -> isize;
 	pub fn EndDialog(dialog: Handle, result: isize) -> i32;
+	pub fn SetTimer(window: Handle, id: usize, milliseconds: u32, callback: *const c_void) -> usize;
+	pub fn GetSysColor(index: i32) -> u32;
+	pub fn FillRect(dc: Handle, rect: *const Rect, brush: Handle) -> i32;
+	pub fn DrawTextA(dc: Handle, text: *const u8, count: i32, rect: *mut Rect, format: u32) -> i32;
+	pub fn DrawFocusRect(dc: Handle, rect: *const Rect) -> i32;
+	pub fn DrawIcon(dc: Handle, x: i32, y: i32, icon: Handle) -> i32;
+	pub fn InvalidateRect(window: Handle, rect: *const Rect, erase: i32) -> i32;
+	pub fn GetParent(window: Handle) -> Handle;
+	pub fn GetDlgCtrlID(window: Handle) -> i32;
+	pub fn SetFocus(window: Handle) -> Handle;
+	pub fn CallWindowProcA(previous: isize, window: Handle, message: u32, wparam: usize, lparam: isize) -> isize;
+	pub fn SystemParametersInfoA(action: u32, param: u32, data: *mut c_void, update: u32) -> i32;
 }
 
 #[cfg(target_arch = "x86")]
@@ -325,6 +415,14 @@ unsafe extern "system" {
 	) -> i32;
 	pub fn SetStretchBltMode(dc: Handle, mode: i32) -> i32;
 	pub fn GetStockObject(object: i32) -> Handle;
+	pub fn CreateSolidBrush(colour: u32) -> Handle;
+	pub fn CreateFontIndirectA(font: *const LogFont) -> Handle;
+	pub fn GetObjectA(object: Handle, bytes: i32, buffer: *mut c_void) -> i32;
+	pub fn DeleteObject(object: Handle) -> i32;
+	pub fn SelectObject(dc: Handle, object: Handle) -> Handle;
+	pub fn SetBkMode(dc: Handle, mode: i32) -> i32;
+	pub fn SetTextColor(dc: Handle, colour: u32) -> u32;
+	pub fn GetDeviceCaps(dc: Handle, index: i32) -> i32;
 }
 
 #[cfg_attr(

@@ -12,8 +12,16 @@ advapi32.dll!RegOpenKeyExA
 advapi32.dll!RegQueryValueExA
 advapi32.dll!RegSetValueExA
 comctl32.dll!InitCommonControls
+gdi32.dll!CreateFontIndirectA
+gdi32.dll!CreateSolidBrush
+gdi32.dll!DeleteObject
+gdi32.dll!GetDeviceCaps
+gdi32.dll!GetObjectA
 gdi32.dll!GetStockObject
+gdi32.dll!SelectObject
+gdi32.dll!SetBkMode
 gdi32.dll!SetStretchBltMode
+gdi32.dll!SetTextColor
 gdi32.dll!StretchDIBits
 kernel32.dll!ExitProcess
 kernel32.dll!GetCommandLineA
@@ -28,25 +36,34 @@ kernel32.dll!HeapReAlloc
 kernel32.dll!QueryPerformanceCounter
 kernel32.dll!QueryPerformanceFrequency
 user32.dll!BeginPaint
+user32.dll!CallWindowProcA
 user32.dll!CreateWindowExA
 user32.dll!DefWindowProcA
 user32.dll!DestroyWindow
 user32.dll!DialogBoxIndirectParamA
 user32.dll!DispatchMessageA
+user32.dll!DrawFocusRect
+user32.dll!DrawIcon
+user32.dll!DrawTextA
 user32.dll!EndDialog
 user32.dll!EndPaint
+user32.dll!FillRect
 user32.dll!GetClientRect
 user32.dll!GetCursorPos
 user32.dll!GetDC
+user32.dll!GetDlgCtrlID
 user32.dll!GetDlgItem
 user32.dll!GetDlgItemTextA
 user32.dll!GetForegroundWindow
+user32.dll!GetParent
+user32.dll!GetSysColor
 user32.dll!GetSystemMetrics
 user32.dll!GetWindowLongA 32
 user32.dll!GetWindowLongPtrA 64
+user32.dll!InvalidateRect
 user32.dll!IsWindow
-user32.dll!MsgWaitForMultipleObjects
 user32.dll!LoadIconA
+user32.dll!MsgWaitForMultipleObjects
 user32.dll!PeekMessageA
 user32.dll!PostMessageA
 user32.dll!PostQuitMessage
@@ -55,6 +72,9 @@ user32.dll!ReleaseDC
 user32.dll!SendMessageA
 user32.dll!SetCursor
 user32.dll!SetDlgItemTextA
+user32.dll!SetFocus
+user32.dll!SetTimer
 user32.dll!SetWindowLongA 32
 user32.dll!SetWindowLongPtrA 64
+user32.dll!SystemParametersInfoA
 user32.dll!TranslateMessage

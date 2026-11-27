@@ -46,6 +46,13 @@ The scene is already in every `.scr`, so the preview and banner cost only the gl
 
 ## Work packages
 
-1. **WP-dialog-v2-shell** (area `win32`, after WP-win32 lands): the layout above as a `DLGTEMPLATE` with owner-drawn swatches (subclassed for arrows), the banner, the preview child window on a timer driving a `Saver`, the rebuild on change, the v1 fallback conditions, and Wine screenshots of each saver's dialog.
+1. **WP-dialog-v2-shell** (area `win32`; done, SAV-D39): the layout above as a `DLGTEMPLATE` with owner-drawn swatches (subclassed for arrows), the banner, the preview child window on a timer driving a `Saver`, the rebuild on change, the v1 fallback conditions, and Wine screenshots of each saver's dialog.
 2. **WP-dialog-v2-art** (area `art`): the swatch drawing rules (stepped bands, ring, light-mode variants) and each scene's banner moment and crop, checked by renders from `savers-preview` (a `--banner` option that writes the banner as PNG).
 3. **WP-dialog-v2-check** (area `win32`): the keyboard walk (tab order, arrows, Enter, Esc, Alt+D) scripted under Wine, a high-contrast run, and a ReactOS guest screenshot with the Afterglow theme and with the classic one.
+
+## What the shell package left for the others
+
+- **Placeholders for the art package.** `banner_moment` in `dialog_v2.rs` gives every saver the same scene time (3 seconds); the art package picks the real moments and any crop. The swatch tile is a ground with three stepped glow bands and the name in the strongest neutral; the art package owns the final drawing rules. Neither needs an asset file: the banner is the scene and the swatches are drawn.
+- **Fallback.** The plain dialog is shown for high contrast, 256 colours or fewer, `PlainDialog` = 1 in the saver's key, or a failed set-up (SPEC section 9). The Collection's dialog runs its scene through the Collection's own maker, as the saver does.
+- **Not yet checked** (the check package): real Windows 95, a ReactOS guest, large fonts and 120 dpi (the controls are laid out in dialog units and the banner and preview take their pixel sizes from the controls, so they should scale; this is not verified), and the full keyboard walk. `scripts/smoke-wine.sh` covers, under Wine: the dialog opens with a banner and a running preview, a swatch click changes the palette and the preview's colours, the arrow keys move the choice, OK writes the registry, Cancel writes nothing, and `PlainDialog` gives the plain dialog.
+- **Settings added to the table later** (Sound, Volume) reach the dialog through the table. `section` in `template.rs` files them under Look only once they are named there; until then an unknown key lands in Scene and rebuilds the preview's scene when it changes.

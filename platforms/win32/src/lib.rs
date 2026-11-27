@@ -14,11 +14,14 @@ extern crate alloc;
 pub mod ansi;
 pub mod cmdline;
 pub mod template;
+pub mod template_v2;
 
 #[cfg(all(windows, not(test)))]
 mod clock;
 #[cfg(all(windows, not(test)))]
 mod dialog;
+#[cfg(all(windows, not(test)))]
+mod dialog_v2;
 #[cfg(all(windows, not(test)))]
 mod registry;
 #[cfg(all(windows, not(test)))]

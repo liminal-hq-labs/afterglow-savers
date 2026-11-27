@@ -126,13 +126,13 @@ unsafe extern "system" fn window_proc(window: Handle, message: u32, wparam: usiz
 	}
 }
 
-/// Shows the frame in the window, enlarged to its client area.
-fn blit(window: Handle, frame: &Frame) {
+/// Draws a 32-bit top-down frame into a device context, enlarged to `width` by `height` pixels.
+pub(crate) fn stretch(dc: Handle, width: i32, height: i32, frame_width: usize, frame_height: usize, pixels: &[u32]) {
 	let info = sys::BitmapInfoHeader {
 		size: core::mem::size_of::<sys::BitmapInfoHeader>() as u32,
-		width: frame.w as i32,
+		width: frame_width as i32,
 		// A negative height is a top-down bitmap, which is how the core's frames are stored.
-		height: -(frame.h as i32),
+		height: -(frame_height as i32),
 		planes: 1,
 		bit_count: 32,
 		compression: sys::BI_RGB,
@@ -142,7 +142,30 @@ fn blit(window: Handle, frame: &Frame) {
 		colours_used: 0,
 		colours_important: 0,
 	};
-	// SAFETY: the window is ours; the frame holds `w * h` pixels; the rectangle and the DC are used only here.
+	// SAFETY: the context is live; `pixels` holds `frame_width * frame_height` entries (the callers pass a frame's own buffer).
+	unsafe {
+		sys::SetStretchBltMode(dc, sys::COLORONCOLOR);
+		sys::StretchDIBits(
+			dc,
+			0,
+			0,
+			width,
+			height,
+			0,
+			0,
+			frame_width as i32,
+			frame_height as i32,
+			pixels.as_ptr() as *const c_void,
+			&info,
+			sys::DIB_RGB_COLORS,
+			sys::SRCCOPY,
+		);
+	}
+}
+
+/// Shows the frame in the window, enlarged to its client area.
+fn blit(window: Handle, frame: &Frame) {
+	// SAFETY: the window is ours; the rectangle and the DC are used only here.
 	unsafe {
 		let mut client = sys::Rect {
 			left: 0,
@@ -155,21 +178,13 @@ fn blit(window: Handle, frame: &Frame) {
 		if dc.is_null() {
 			return;
 		}
-		sys::SetStretchBltMode(dc, sys::COLORONCOLOR);
-		sys::StretchDIBits(
+		stretch(
 			dc,
-			0,
-			0,
 			client.right - client.left,
 			client.bottom - client.top,
-			0,
-			0,
-			frame.w as i32,
-			frame.h as i32,
-			frame.px.as_ptr() as *const c_void,
-			&info,
-			sys::DIB_RGB_COLORS,
-			sys::SRCCOPY,
+			frame.w,
+			frame.h,
+			&frame.px,
 		);
 		sys::ReleaseDC(window, dc);
 	}
@@ -195,7 +210,7 @@ fn register_class(instance: Handle) {
 }
 
 /// The seed: the setting, or a new one from the tick count and the cursor when the setting is 0.
-fn seed_for(settings: &Settings) -> u32 {
+pub(crate) fn seed_for(settings: &Settings) -> u32 {
 	let set = settings.get(Key::Seed);
 	if set != 0 {
 		return set;
@@ -375,11 +390,11 @@ pub fn run(kind: SaverKind, make: MakeScene) -> u32 {
 					_ => sys::GetForegroundWindow(),
 				}
 			};
-			dialog::show_settings(kind, owner);
+			dialog::show_settings(kind, owner, make);
 			0
 		}
 		Mode::Plain => {
-			dialog::show_settings(kind, sys::NULL);
+			dialog::show_settings(kind, sys::NULL, make);
 			0
 		}
 		Mode::Password => 0,
