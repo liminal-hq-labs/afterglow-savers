@@ -48,4 +48,13 @@ Against `opt-level = 2` on the host bench, `3` makes Ink at 100% Ultra about 25%
 
 ## Open questions for the owner
 
-- Quill Ghostwriter could be started from Quill's About box (a click on the nib); that is Quill's to decide.
+Each has a default in place; the file or setting named swaps it.
+
+- **Quill Ghostwriter from Quill's About box** (a click on the nib): Quill's to decide; nothing here depends on it.
+- **The video audio level:** lifted to about -20 dBFS RMS for listening (`scripts/preview-audio.sh`, its `GAIN_DB`); the savers themselves play at `Volume` 28.
+- **The Cracktro's music:** a gentle generated chiptune at the quiet default; `audio::score_for` can return none for silence.
+- **Ghostwriter's key ticks:** very quiet; their gain is in `audio/ghostwriter.rs`.
+- **The compact ReactOS image:** recommended to keep the five Afterglow savers (`docs/reactos-integration.md`).
+- **The default saver and timeout in the image:** the Collection after ten minutes (`docs/reactos-integration.md`).
+- **Twilight's loop:** stays as it is (a designed fade through black at the 90-second wrap, not pixel-periodic), as the owner decided.
+- **Not yet verified:** sound in the ReactOS guest (AC97 capture, with WP-audio-win32), the pointer-hiding fix in the guest, Windows 95 itself, real hardware, and a Pentium III's real frame rate (the estimates come from a reference loop).
