@@ -64,7 +64,8 @@ pub struct Cracktro {
 	/// The plasma's radial term per stage pixel.
 	radial: Vec<u16>,
 	sine: Vec<i32>,
-	strip: Strip,
+	/// The scroller's text, set only when `Scroller` is on (SAV-D60): off, nothing is rendered or drawn.
+	strip: Option<Strip>,
 	stars: Vec<(f32, f32, f32)>,
 	xmap: Vec<u16>,
 	reflect: bool,
@@ -160,15 +161,17 @@ impl Cracktro {
 				radial[y * sw + x] = (sqrt(dx * dx + dy * dy) * 2400.0 / sw as f32) as u16;
 			}
 		}
-		let message: String = if settings.text.trim().is_empty() {
-			String::from(DEFAULT_MESSAGE)
-		} else {
-			let mut m = String::from(settings.text.trim());
-			m.push_str("          ");
-			m
-		};
-		// Scrollers shout: the message is set in capitals.
-		let strip = font::render(&message.to_uppercase(), (sh / 5).max(12), 0.95);
+		let strip = (settings.get(Key::Scroller) != 0).then(|| {
+			let message: String = if settings.text.trim().is_empty() {
+				String::from(DEFAULT_MESSAGE)
+			} else {
+				let mut m = String::from(settings.text.trim());
+				m.push_str("          ");
+				m
+			};
+			// Scrollers shout: the message is set in capitals.
+			font::render(&message.to_uppercase(), (sh / 5).max(12), 0.95)
+		});
 		let stars = (0..(sw / 3).max(20))
 			.map(|_| (rng.f(), rng.f(), rng.range(0.2, 1.0)))
 			.collect();
@@ -469,7 +472,9 @@ impl Cracktro {
 	/// shadow, and at High a reflection in a strip of water at the bottom.
 	fn scroller(&self, t: f32, f: &mut Frame) {
 		let (sw, sh) = (self.sw, self.sh);
-		let s = &self.strip;
+		let Some(s) = &self.strip else {
+			return;
+		};
 		let period = s.w + sw;
 		let scroll = (t * sw as f32 * 0.32) as usize;
 		let amp = sh as f32 * 0.06;

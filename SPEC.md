@@ -94,7 +94,8 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 | Twilight | `Sun` | Show the sun: far off in the establishing shot, and sliding out from behind the limb in the night-side drift | 0–1 | 1 |
 | Ink | `Thickness` | Width of the ink bands against the water | 0–100 | 50 |
 | Ink | `Turbulence` | Strength and number of the eddies | 0–100 | 50 |
-| Cracktro | `Message` (`REG_SZ`) | The scroller's text, at most 2,000 characters | | §8 |
+| Cracktro | `Scroller` | Show the scrolling words at all (SAV-D60, SAV-D75); off draws no strip and no words | 0–1 | 0 |
+| Cracktro | `Message` (`REG_SZ`) | The scroller's own words, at most 2,000 characters; read only while `Scroller` is 1, and empty means §8's text | | §8 |
 | Cracktro | `Parts` | Bit mask of the parts: 1 copper, 2 plasma, 4 rotozoomer, 8 tunnel, 16 vector bars | 1–31 | 31 |
 | Cracktro | `Shuffle` | Shuffle the parts | 0–1 | 0 |
 | Collection | `Duration` | Seconds per saver | 30–600 | 90 |
@@ -106,6 +107,8 @@ Each saver keeps its settings under **`HKEY_CURRENT_USER\Software\Liminal HQ\Aft
 The Collection uses its own common settings for all four scenes, and each scene's own scene settings and seed from that scene's key (SAV-D8).
 
 ## 8. The cracktro's default message
+
+The words show only when `Scroller` is 1 (it is 0 by default). The Collection follows the Cracktro's own key, so its Cracktro turn has no words either until the person ticks the box.
 
 > Hello, everyone, and welcome to Afterglow for ReactOS. Greetings fly out to the ReactOS developers, the Wine project, everyone keeping a 486 humming in the spare room, the DOS and Amiga sceners, the folks who recap old motherboards, the archivists who keep the old disks readable, and you, for leaving your machine alone long enough to see this. Afterglow for ReactOS is an unofficial remaster, made by Liminal HQ. Not affiliated with the ReactOS project. ... Copper bars courtesy of trigonometry. Plasma courtesy of more trigonometry. Press any key to return to work. ...
 

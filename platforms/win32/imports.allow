@@ -51,6 +51,7 @@ user32.dll!DispatchMessageA
 user32.dll!DrawFocusRect
 user32.dll!DrawIcon
 user32.dll!DrawTextA
+user32.dll!EnableWindow
 user32.dll!EndDialog
 user32.dll!EndPaint
 user32.dll!FillRect

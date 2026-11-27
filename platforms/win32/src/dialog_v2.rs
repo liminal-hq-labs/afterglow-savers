@@ -15,7 +15,7 @@ use savers_core::swatch;
 
 use crate::ansi::{number_text, to_ansi};
 use crate::clock::Clock;
-use crate::dialog::{collect, item, prepare, show};
+use crate::dialog::{collect, item, prepare, show, sync_scroller};
 use crate::registry::RegStore;
 use crate::saver::{MakeScene, seed_for, stretch};
 use crate::sys::{self, Handle};
@@ -675,7 +675,10 @@ unsafe extern "system" fn dialog_proc(dialog: Handle, message: u32, wparam: usiz
 						);
 						state.dirty.set(true);
 					}
-					_ => state.dirty.set(true),
+					_ => {
+						sync_scroller(dialog, state.kind);
+						state.dirty.set(true);
+					}
 				}
 				0
 			}
