@@ -1,0 +1,21 @@
+{
+	"dialogs": [
+		{
+			"id": 100,
+			"caption": "Setup: Quill Ghostwriter",
+			"x": 20, "y": 20, "cx": 190, "cy": 118,
+			"items": [
+				{ "class": "static", "id": 200, "text": "Quill types a document that is never saved.", "x": 10, "y": 8, "cx": 170, "cy": 10 },
+				{ "class": "button", "id": 201, "text": "Make a &typo now and then", "x": 10, "y": 24, "cx": 170, "cy": 12, "style": [3, "tabstop"] },
+				{ "class": "button", "id": 202, "text": "Visit from the &Save changes box", "x": 10, "y": 38, "cx": 170, "cy": 12, "style": [3, "tabstop"] },
+				{ "class": "button", "id": 203, "text": "Typing speed", "x": 10, "y": 54, "cx": 170, "cy": 34, "style": [7] },
+				{ "class": "button", "id": 204, "text": "S&low", "x": 18, "y": 66, "cx": 44, "cy": 12, "style": [9, "group", "tabstop"] },
+				{ "class": "button", "id": 205, "text": "&Normal", "x": 68, "y": 66, "cx": 44, "cy": 12, "style": [9] },
+				{ "class": "button", "id": 206, "text": "&Fast", "x": 118, "y": 66, "cx": 44, "cy": 12, "style": [9] },
+				{ "class": "button", "id": 1, "text": "OK", "x": 84, "y": 98, "cx": 44, "cy": 14, "style": ["defpushbutton", "group", "tabstop"] },
+				{ "class": "button", "id": 2, "text": "Cancel", "x": 134, "y": 98, "cx": 44, "cy": 14, "style": ["tabstop"] }
+			]
+		}
+	],
+	"strings": { "1": "Quill Ghostwriter" }
+}
