@@ -24,6 +24,8 @@ WP-PACK-7  quill16           installer components              needs S only (in 
 
 Three packages stand apart from that chain and need none of it: WP-SCROLL (the Cracktro's scroller words off by default, with a setting), WP-LINUX-PKG (deb, rpm and PKGBUILD for the GPU Twilight) and WP-GPU-MONITORS (one GPU Twilight window per monitor). They are planned, with a fourth, WP-LINUX-DESKTOP, in [linux-packages.md](linux-packages.md), and are not part of this build-ordered plan.
 
+**A shared core, later.** liminal-installer's [shared libraries plan](https://github.com/liminal-hq-labs/liminal-installer/blob/main/docs/plans/shared-libraries.md) measured the duplication: each single saver carries about 78 KB of the same shell, core and runtime code, and the Collection repeats every scene, so the six i586 files (1,196,544 bytes) would be about 474,000 as one `AGCORE1.DLL` and six stub `.scr` files (the five main files from 1,025,536 to about 462,000, and about 260 KB less in the image parts). Its WP-SL-1 and WP-SL-3 build and check that shared set here beside the standalone files, and WP-SL-4 then points the images at it, reserving SAV-D80 to SAV-D83. Nothing in WP-PACK-1 to WP-PACK-7 changes: the images take the standalone files first, and Quill's installers keep the standalone `AGQUILL.SCR` (SAV-D22).
+
 At most three builders at once: 1 → 2 in this repository while 3 runs in reactos-liminal; then 4 and 7 together; then 5 and 6.
 
 ## House rules for every package
